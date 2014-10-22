@@ -11,7 +11,7 @@ This extension contains geospatial viewing plugins, namely
 Both implementations rely on OpenLayers 2, and provide support for geospatial formats and
 protocols such as
 
-* **Mime types**: GeoJSON, KML, GML, ESRI JSON, ShapeFile
+* **Mime types**: GeoJSON, KML, GML, ESRI JSON
 * **Web Services**: WMS, WFS, Google Fusion Tables, ESRI ArcRest
 
 Installation
@@ -42,7 +42,7 @@ This key must be granted Fusion Tables permissions. More information on obtainin
 Usage
 -----
 
-The ```geoview``` plugin is available and will register itself automatically on any new resource that has one of the following formats : 'kml','geojson','gml','wms','wfs','shp', 'esrigeojson', 'gft', 'arcgis_rest'
+The ```geoview``` plugin is available and will register itself automatically on any new resource that has one of the following formats : 'kml','geojson','gml','wms','wfs', 'esrigeojson', 'gft', 'arcgis_rest'
 
 The ```geopreview``` plugin recognizes the same formats, and will be chosen if possible, according to the priority order defined in the .ini file.
 
