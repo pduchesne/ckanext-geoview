@@ -34,13 +34,11 @@ ckanext.geoview.gapi.key=<API Key here>
 
 This key must be granted Fusion Tables permissions. More information on obtaining such a key at https://developers.google.com/fusiontables/docs/v1/using#APIKey .
 
-
 Usage
 -----
 
-The View plugin is available and will register itself automatically on any new resource that has one of the following formats:
- 'kml','geojson','gml','wms','wfs','shp', 'esrigeojson', 'gft', 'arcgis_rest'
+The ```geoview``` plugin is available and will register itself automatically on any new resource that has one of the following formats : 'kml','geojson','gml','wms','wfs','shp', 'esrigeojson', 'gft', 'arcgis_rest'
 
-The Preview plugin recognizes the same formats, and will be chosen if possible, according to the priority order defined in the .ini file.
+The ```geopreview``` plugin recognizes the same formats, and will be chosen if possible, according to the priority order defined in the .ini file.
 
 
