@@ -10,8 +10,9 @@ This extension contains geospatial viewing plugins, namely
 
 Both implementations rely on OpenLayers 2, and provide support for geospatial formats and
 protocols such as
-* Mime types: GeoJSON, KML, GML, ESRI JSON, ShapeFile
-* Web Services: WMS, WFS, Google Fusion Tables, ESRI ArcRest
+
+* **Mime types**: GeoJSON, KML, GML, ESRI JSON, ShapeFile
+* **Web Services**: WMS, WFS, Google Fusion Tables, ESRI ArcRest
 
 Installation
 ------------
@@ -19,7 +20,7 @@ Installation
 Inside your pyenv, install using pip:
 
 ```
-pip install -e git+git://github.com/pduchesne/ckanext-geoview.git#egg=ckanext-vegaview
+pip install -e git+git://github.com/pduchesne/ckanext-geoview.git#egg=ckanext-geoview
 ```
 
 Then add the ```geoview``` (for CKAN 2.3+) or the ```geopreview``` plugin (for older versions)
@@ -31,7 +32,7 @@ To be able to view Google Fusion Tables resources, a Google API Key must be conf
 ckanext.geoview.gapi.key=<API Key here>
 ```
 
-This key must be granted Fusion Tables permissions. More information on obatining such a kay at https://developers.google.com/fusiontables/docs/v1/using#APIKey .
+This key must be granted Fusion Tables permissions. More information on obtaining such a key at https://developers.google.com/fusiontables/docs/v1/using#APIKey .
 
 
 Usage
