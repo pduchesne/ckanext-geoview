@@ -1,0 +1,18 @@
+{
+  "name": "ol-helpers",
+  "description": "Handy glue code for Openlayers",
+  "version": "1.0.0",
+  "keywords": [
+    "openlayers",
+    "geo",
+    "web"
+  ],
+  "main": [
+    "EsriGeoJSON.js",
+    "ol-helpers.js"
+  ],
+  "dependencies": {
+    "underscore": ">=1.4.2",
+    "openlayers2": "pduchesne/ol2-bower"
+  }
+}

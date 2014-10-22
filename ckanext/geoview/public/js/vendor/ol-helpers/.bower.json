@@ -1,0 +1,27 @@
+{
+  "name": "ol-helpers",
+  "description": "Handy glue code for Openlayers",
+  "keywords": [
+    "openlayers",
+    "geo",
+    "web"
+  ],
+  "main": [
+    "EsriGeoJSON.js",
+    "ol-helpers.js"
+  ],
+  "dependencies": {
+    "underscore": ">=1.4.2",
+    "openlayers2": "pduchesne/ol2-bower"
+  },
+  "homepage": "https://github.com/pduchesne/ol-helpers",
+  "_release": "c204a7f2da",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "c204a7f2da49cbc2ce1cd50f15218cfe90fe965c"
+  },
+  "_source": "git://github.com/pduchesne/ol-helpers.git",
+  "_target": "*",
+  "_originalSource": "pduchesne/ol-helpers"
+}

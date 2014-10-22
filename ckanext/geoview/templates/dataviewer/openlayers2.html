@@ -1,0 +1,28 @@
+{% extends "dataviewer/base.html" %}
+
+{% block page %}
+    <div data-module="olpreview" id="data-preview">
+        <h4 class="loading-dialog">
+          <div class="loading-spinner"></div>
+          <div class="left">{{ _('Loading...') }}</div>
+        </h4>
+    </div>
+
+    {% resource 'ckanext-geoview/openlayers2' %}
+    {% resource 'vendor/bootstrap' %}
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+
+    <script>
+       var CKAN_GAPI_KEY = "{{ h.literal(c.gapi_key) }}"
+       var proxy_service_url = {{ h.literal(proxy_service_url) or 'undefined' }}
+       var proxy_url = {{ h.literal(proxy_url) or 'undefined'  }}
+    </script>
+{% endblock %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ h.url_for_static('/css/bootstrap.min.css') }}" type="text/css" media="screen, projection" />
+{% endblock %}
+

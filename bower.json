@@ -1,0 +1,8 @@
+{
+    "name": "ckanext-geoview",
+    "version": "0.1.0",
+    "dependencies": {
+        "ol-helpers": "pduchesne/ol-helpers"
+    },
+    "appPath": "ckanext/geoview/public"
+}

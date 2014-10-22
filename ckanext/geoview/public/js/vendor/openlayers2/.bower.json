@@ -1,0 +1,19 @@
+{
+  "name": "ol2-bower",
+  "description": "OpenLayers 2 Bower descriptor",
+  "keywords": [
+    "openlayers",
+    "bower"
+  ],
+  "ignore": [],
+  "homepage": "https://github.com/pduchesne/ol2-bower",
+  "_release": "8d76a28cb1",
+  "_resolution": {
+    "type": "branch",
+    "branch": "master",
+    "commit": "8d76a28cb1c4d07e61597c2f0eeb13cd51d1e1eb"
+  },
+  "_source": "git://github.com/pduchesne/ol2-bower.git",
+  "_target": "*",
+  "_originalSource": "pduchesne/ol2-bower"
+}
