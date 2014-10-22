@@ -26,6 +26,11 @@ pip install -e git+git://github.com/pduchesne/ckanext-geoview.git#egg=ckanext-ge
 Then add the ```geoview``` (for CKAN 2.3+) or the ```geopreview``` plugin (for older versions)
 into the ```ckan.plugins``` section of your .ini file.
 
+For CKAN versions 2.2 and older, ensure you have the Resource Proxy enabled. This is done by adding ``resource_proxy`` to the ``ckan.plugins`` section of your .ini file and adding this config option:
+```
+ckan.resource_proxy_enabled = True
+```
+ 
 To be able to view Google Fusion Tables resources, a Google API Key must be configured in the .ini file :
 
 ```
