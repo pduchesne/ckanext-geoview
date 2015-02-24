@@ -43,7 +43,7 @@ def proxy_service(self, context, data_dict):
         #log.info('Request: {req}'.format(req=r.request.url))
         #log.info('Request Headers: {h}'.format(h=r.request.headers))
 
-        cl = r.headers['content-length']
+        cl = r.headers.get('content-length')
         if cl and int(cl) > MAX_FILE_SIZE:
             base.abort(409, ('''Content is too large to be proxied. Allowed
                 file size: {allowed}, Content-Length: {actual}. Url: '''+url).format(
