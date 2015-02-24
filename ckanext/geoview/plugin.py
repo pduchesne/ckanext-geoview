@@ -88,9 +88,8 @@ class GeoPreview(p.SingletonPlugin):
 class GeoView(p.SingletonPlugin):
 
     p.implements(p.IConfigurer, inherit=True)
-    if p.toolkit.check_ckan_version('2.3'): p.implements(p.IResourceView, inherit=True)
+    p.implements(p.IResourceView, inherit=True)
     p.implements(p.IRoutes, inherit=True)
-    p.implements(p.IPackageController, inherit=True)
 
     FORMATS = ['kml','geojson','gml','wms','wfs','shp', 'esrigeojson', 'gft', 'arcgis_rest']
 
@@ -100,6 +99,8 @@ class GeoView(p.SingletonPlugin):
         p.toolkit.add_template_directory(config, 'templates')
         p.toolkit.add_resource('public', 'ckanext-geoview')
 
+        if not p.toolkit.check_ckan_version('2.3'):
+            raise ValueError('This plugin requires CKAN 2.3 or higher')
         # this is always False as of 2.3
         self.proxy_enabled = p.toolkit.asbool(config.get('ckan.resource_proxy_enabled', 'False'))
 
@@ -139,22 +140,8 @@ class GeoView(p.SingletonPlugin):
 
         correct_format = format_lower in self.FORMATS
         can_preview_from_domain = self.proxy_enabled or same_domain
-        quality = 2
 
-        if p.toolkit.check_ckan_version('2.3'):
-            return {'can_preview': True, 'quality': quality}
-        elif p.toolkit.check_ckan_version('2.1'):
-            if correct_format:
-                if can_preview_from_domain:
-                    return {'can_preview': True, 'quality': quality}
-                else:
-                    return {'can_preview': False,
-                            'fixable': 'Enable resource_proxy',
-                            'quality': quality}
-            else:
-                return {'can_preview': False, 'quality': quality}
-        else:
-            return correct_format and can_preview_from_domain
+        return correct_format and can_preview_from_domain
 
     def view_template(self, context, data_dict):
         return 'dataviewer/openlayers2.html'
@@ -164,27 +151,3 @@ class GeoView(p.SingletonPlugin):
                   controller='ckanext.geoview.controllers.service_proxy:ServiceProxyController',
                   action='proxy_service')
         return m
-
-    def add_default_views(self, context, data_dict):
-        resources = datapreview.get_new_resources(context, data_dict)
-        for resource in resources:
-            if self.can_view({'package': data_dict, 'resource': resource}):
-                format = resource.get('format', '')
-                view = {
-                    'title': 'Geo View',
-                    # detect when it is a service, not a file
-                    'description': 'View of the {format} file'.format(
-                        format=format.upper()
-                    ),
-                    'resource_id': resource['id'],
-                    'view_type': 'geoview'
-                }
-                p.toolkit.get_action('resource_view_create')(
-                    {'defer_commit': True}, view
-                )
-
-    def after_update(self, context, data_dict):
-        self.add_default_views(context, data_dict)
-
-    def after_create(self, context, data_dict):
-        self.add_default_views(context, data_dict)
