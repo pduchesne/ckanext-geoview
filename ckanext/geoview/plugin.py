@@ -50,7 +50,7 @@ class GeoPreview(p.SingletonPlugin):
             p.toolkit.c.resource['proxy_url'] = data_dict['resource']['url']
 
     def can_preview(self, data_dict):
-        format_lower = data_dict['resource']['format'].lower()
+        format_lower = data_dict['resource'].get('format', '').lower()
 
         #guess from file extension
         if not format_lower:
@@ -129,7 +129,7 @@ class GeoView(p.SingletonPlugin):
                 'proxy_url': json.dumps(proxy_url)}
 
     def can_view(self, data_dict):
-        format_lower = data_dict['resource']['format'].lower()
+        format_lower = data_dict['resource'].get('format', '').lower()
         same_domain = datapreview.on_same_domain(data_dict)
 
         #guess from file extension
