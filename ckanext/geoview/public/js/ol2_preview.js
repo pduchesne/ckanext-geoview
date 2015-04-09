@@ -236,6 +236,7 @@
                 this.map = new OpenLayers.Map(
                     {
                         div: "map",
+                        theme: "/js/vendor/openlayers2/theme/default/style.css",
                         layers: [basemapLayer],
                         maxExtent: basemapLayer.getMaxExtent(),
                         //projection: Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
@@ -299,3 +300,4 @@
         }
     });
 })();
+OpenLayers.ImgPath = '/js/vendor/openlayers2/img/';
