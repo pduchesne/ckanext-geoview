@@ -5,8 +5,8 @@ version = '1.0'
 setup(
     name='ckanext-geoview',
     version=version,
-    description="CKAN Geospatial ResourceView",
-    long_description=""" """,
+    description='CKAN Geospatial ResourceView',
+    long_description=''' ''',
     classifiers=[],
     keywords='',
     author='Philippe Duchesne',
@@ -20,10 +20,9 @@ setup(
     install_requires=[
         # -*- Extra requirements: -*-
     ],
-    entry_points= \
-        """
+    entry_points='''
     [ckan.plugins]
-    geoview=ckanext.geoview.plugin:GeoView
-    geopreview=ckanext.geoview.plugin:GeoPreview
-	""",
+    geo_view=ckanext.geoview.plugin:GeoView
+    geo_preview=ckanext.geoview.plugin:GeoView
+    ''',
 )
