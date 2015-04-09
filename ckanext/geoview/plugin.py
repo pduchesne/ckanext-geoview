@@ -15,6 +15,9 @@ except ImportError:
 
 log = getLogger(__name__)
 
+GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'shp', 'esrigeojson',
+                   'gft', 'arcgis_rest']
+
 
 def get_proxified_service_url(data_dict):
     '''
@@ -52,9 +55,6 @@ class GeoView(p.SingletonPlugin):
 
     p.implements(p.IRoutes, inherit=True)
     p.implements(p.ITemplateHelpers, inherit=True)
-
-    FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'shp', 'esrigeojson',
-               'gft', 'arcgis_rest']
 
     # IConfigurer
 
@@ -94,7 +94,13 @@ class GeoView(p.SingletonPlugin):
             format_lower = self._guess_format_from_extension(
                 data_dict['resource']['url'])
 
-        correct_format = format_lower in self.FORMATS
+        view_formats = config.get('ckanext.geoview.ol_viewer.formats', '')
+        if view_formats:
+            view_formats.split(' ')
+        else:
+            view_formats = GEOVIEW_FORMATS
+
+        correct_format = format_lower in view_formats
         can_preview_from_domain = self.proxy_enabled or same_domain
 
         return correct_format and can_preview_from_domain
