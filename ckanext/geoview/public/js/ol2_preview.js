@@ -296,40 +296,8 @@
                         div: "map",
                         theme: "/js/vendor/openlayers2/theme/default/style.css",
                         layers: [baseMapLayer],
-                        maxExtent: baseMapLayer.getMaxExtent(),
+                        maxExtent: baseMapLayer.getMaxExtent()
                         //projection: Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
-                        eventListeners: {
-                            featureover: function (e) {
-                                e.feature.renderIntent = "select";
-                                e.feature.layer.drawFeature(e.feature);
-                                var pixel = event.xy
-                                info.css({
-                                    left: (pixel.x + 10) + 'px',
-                                    top: (pixel.y - 15) + 'px'
-                                });
-                                info.currentFeature = e.feature
-                                info.tooltip('hide')
-                                    .empty()
-                                var tooltip = "<div>" + (e.feature.data.name || e.feature.fid) + "</div><table>";
-                                for (var prop in e.feature.data) tooltip += "<tr><td>" + prop + "</td><td>" + e.feature.data[prop] + "</td></tr></div>"
-                                tooltip += "</table>"
-                                info.attr('data-original-title', tooltip)
-                                    .tooltip('fixTitle')
-                                    .tooltip('show');
-                            },
-                            featureout: function (e) {
-                                e.feature.renderIntent = "default"
-                                e.feature.layer.drawFeature(e.feature)
-                                if (info.currentFeature == e.feature) {
-                                    info.tooltip('hide')
-                                    info.currentFeature = undefined
-                                }
-
-                            },
-                            featureclick: function (e) {
-                                //log("Map says: " + e.feature.id + " clicked on " + e.feature.layer.name);
-                            }
-                        }
                     });
 
                 layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher()
