@@ -216,8 +216,66 @@
 
             },
 
+            _commonBaseLayer: function(mapConfig) {
+                /*
+                Return an OpenLayers base layer to be used depending on CKAN wide settings
+
+                TODO: factor out somewhere it can be reused by other modules.
+
+                */
+
+                var baseMapLayer;
+                var urls;
+                var attribution;
+                if (mapConfig.type == 'mapbox') {
+                    // MapBox base map
+                    if (!mapConfig['mapbox.map_id'] || !mapConfig['mapbox.access_token']) {
+                      throw '[CKAN Map Widgets] You need to provide a map ID ([account].[handle]) and an access token when using a MapBox layer. ' +
+                            'See http://www.mapbox.com/developers/api-overview/ for details';
+                    }
+
+                    urls = ['//a.tiles.mapbox.com/v4/' + mapConfig['mapbox.map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['mapbox.access_token'],
+                                '//b.tiles.mapbox.com/v4/' + mapConfig['mapbox.map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['mapbox.access_token'],
+                                '//c.tiles.mapbox.com/v4/' + mapConfig['mapbox.map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['mapbox.access_token'],
+                                '//d.tiles.mapbox.com/v4/' + mapConfig['mapbox.map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['mapbox.access_token'],
+                    ];
+                    attribution = '<a href="https://www.mapbox.com/about/maps/" target="_blank">&copy; Mapbox &copy; OpenStreetMap </a> <a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a>';
+                    baseMapLayer = new OpenLayers.Layer.XYZ('MapBox', urls, {
+                        sphericalMercator: true,
+                        wrapDateLine: true,
+                        attribution: attribution
+                    });
+                } else if (mapConfig.type == 'custom') {
+                    // Custom XYZ layer
+                    urls = mapConfig['custom.url'];
+                    if (urls.indexOf('${x}') === -1) {
+                      urls = urls.replace('{x}', '${x}').replace('{y}', '${y}').replace('{z}', '${z}');
+                    }
+                    baseMapLayer = new OpenLayers.Layer.XYZ('Base Layer', urls, {
+                        sphericalMercator: true,
+                        wrapDateLine: true,
+                        attribution: mapConfig.attribution
+                    });
+                } else {
+                    // MapQuest OpenStreetMap base map
+                    var urls = ['//otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                            '//otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                            '//otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                            '//otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
+                    var attribution = mapConfig.attribution || 'Map data &copy; OpenStreetMap contributors, Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="//developer.mapquest.com/content/osm/mq_logo.png">';
+
+                    baseMapLayer = new OpenLayers.Layer.OSM('MapQuest OSM', urls, {
+                      attribution: attribution});
+                }
+
+                return baseMapLayer;
+
+            },
+
             _onReady: function () {
-                var basemapLayer = new OpenLayers.Layer.OSM("Simple OSM Map")
+
+                // Choose base map based on CKAN wide config
+                var baseMapLayer = this._commonBaseLayer(this.options.map_config);
 
                 var mapDiv = $("<div></div>").attr("id", "map").addClass("map")
                 var info = $("<div></div>").attr("id", "info")
@@ -237,8 +295,8 @@
                     {
                         div: "map",
                         theme: "/js/vendor/openlayers2/theme/default/style.css",
-                        layers: [basemapLayer],
-                        maxExtent: basemapLayer.getMaxExtent(),
+                        layers: [baseMapLayer],
+                        maxExtent: baseMapLayer.getMaxExtent(),
                         //projection: Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
                         eventListeners: {
                             featureover: function (e) {
@@ -288,18 +346,6 @@
 
                 // Expand layer switcher by default
                 layerSwitcher.maximizeControl();
-
-                /*
-                 var resourceLayers = createLayers(preload_resource)
-                 var $this = this;
-
-                 if (! (resourceLayers instanceof Array)) resourceLayers = [resourceLayers]
-                 $_.each(resourceLayers, function(resourceLayer) {
-                 if (resourceLayer.done) resourceLayer.done(function(layer) {$this.addLayer(layer)})
-                 else $this.addLayer(resourceLayer)
-                 })
-                 */
-
 
             }
         }

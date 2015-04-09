@@ -1,7 +1,9 @@
 {% extends "dataviewer/base.html" %}
 
 {% block page %}
-    <div data-module="olpreview" id="data-preview">
+
+    {% set map_config = h.get_common_map_config_geoviews() %}
+    <div id="data-preview" data-module="olpreview" data-module-map_config="{{ h.dump_json(map_config) }}">
         <h4 class="loading-dialog">
           <div class="loading-spinner"></div>
           <div class="left">{{ _('Loading...') }}</div>

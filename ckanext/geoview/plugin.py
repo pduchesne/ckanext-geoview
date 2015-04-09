@@ -32,6 +32,16 @@ def get_proxified_service_url(data_dict):
     return url
 
 
+def get_common_map_config():
+    '''
+        Returns a dict with all configuration options related to the common
+        base map (ie those starting with 'ckanext.spatial.common_map.')
+    '''
+    namespace = 'ckanext.spatial.common_map.'
+    return dict([(k.replace(namespace, ''), v) for k, v in config.iteritems()
+                 if k.startswith(namespace)])
+
+
 class GeoView(p.SingletonPlugin):
 
     p.implements(p.IConfigurer, inherit=True)
@@ -41,6 +51,7 @@ class GeoView(p.SingletonPlugin):
         p.implements(p.IResourcePreview, inherit=True)
 
     p.implements(p.IRoutes, inherit=True)
+    p.implements(p.ITemplateHelpers, inherit=True)
 
     FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'shp', 'esrigeojson',
                'gft', 'arcgis_rest']
@@ -64,6 +75,13 @@ class GeoView(p.SingletonPlugin):
                   controller=controller,
                   action='proxy_service')
         return m
+
+    # ITemplateHelpers
+
+    def get_helpers(self):
+        return {
+            'get_common_map_config_geoviews': get_common_map_config,
+        }
 
     # IResourceView (CKAN >=2.3)
 
