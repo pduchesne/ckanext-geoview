@@ -127,6 +127,10 @@ class GeoView(p.SingletonPlugin):
 
         p.toolkit.c.gapi_key = config.get('ckanext.geoview.gapi.key')
 
+        if not data_dict['resource'].get('format'):
+            data_dict['resource']['format'] = self._guess_format_from_extension(
+                data_dict['resource']['url'])
+
         if self.proxy_enabled and not same_domain:
             p.toolkit.c.resource['proxy_url'] = proxy.get_proxified_resource_url(data_dict)
             p.toolkit.c.resource['proxy_service_url'] = get_proxified_service_url(data_dict)
