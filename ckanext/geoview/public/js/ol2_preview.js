@@ -274,15 +274,20 @@
                         }
                     });
 
-                this.map.addControl(new OpenLayers.Control.CKANLayerSwitcher());
+                layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher()
 
-                var bboxFrag
-                var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1))
+                this.map.addControl(layerSwitcher);
 
-                var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(EPSG4326, this.map.getProjectionObject()))
-                if (bbox) this.map.zoomToExtent(bbox)
+                var bboxFrag;
+                var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
 
-                withLayers(preload_resource, $_.bind(this.addLayer, this))
+                var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(EPSG4326, this.map.getProjectionObject()));
+                if (bbox) this.map.zoomToExtent(bbox);
+
+                withLayers(preload_resource, $_.bind(this.addLayer, this));
+
+                // Expand layer switcher by default
+                layerSwitcher.maximizeControl();
 
                 /*
                  var resourceLayers = createLayers(preload_resource)
