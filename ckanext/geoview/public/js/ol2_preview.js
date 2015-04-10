@@ -227,6 +227,8 @@
                 var baseMapLayer;
                 var urls;
                 var attribution;
+
+                var isHttps = window.location.href.substring(0, 5).toLowerCase() === 'https';
                 if (mapConfig.type == 'mapbox') {
                     // MapBox base map
                     if (!mapConfig['mapbox.map_id'] || !mapConfig['mapbox.access_token']) {
@@ -258,10 +260,18 @@
                     });
                 } else {
                     // MapQuest OpenStreetMap base map
-                    var urls = ['//otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                            '//otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                            '//otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                            '//otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
+                    if (isHttps) {
+                        var urls = ['//otile1-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                                    '//otile2-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                                    '//otile3-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                                    '//otile4-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
+
+                    } else {
+                        var urls = ['//otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                                    '//otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                                    '//otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
+                                    '//otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
+                    }
                     var attribution = mapConfig.attribution || 'Map data &copy; OpenStreetMap contributors, Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="//developer.mapquest.com/content/osm/mq_logo.png">';
 
                     baseMapLayer = new OpenLayers.Layer.OSM('MapQuest OSM', urls, {
