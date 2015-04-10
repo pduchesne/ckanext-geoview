@@ -15,7 +15,7 @@ except ImportError:
 
 log = getLogger(__name__)
 
-GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'shp', 'esrigeojson',
+GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'esrigeojson',
                    'gft', 'arcgis_rest']
 
 
@@ -131,7 +131,7 @@ class GeoView(p.SingletonPlugin):
 
         same_domain = on_same_domain(data_dict)
 
-        p.toolkit.c.gapi_key = config.get('ckanext.geoview.gapi.key')
+        p.toolkit.c.gapi_key = config.get('ckanext.geoview.gapi_key')
 
         if not data_dict['resource'].get('format'):
             data_dict['resource']['format'] = self._guess_format_from_extension(
