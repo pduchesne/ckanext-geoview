@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '1.0'
+version = '0.0.1'
 
 setup(
     name='ckanext-geoview',
@@ -11,7 +11,7 @@ setup(
     keywords='',
     author='Philippe Duchesne',
     author_email='pduchesne@gmail.com',
-    url='http://github.com/pduchesne/ckanext-geoview',
+    url='http://github.com/ckan/ckanext-geoview',
     license='MIT',
     packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
     namespace_packages=['ckanext', 'ckanext.geoview'],
