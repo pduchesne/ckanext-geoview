@@ -286,6 +286,7 @@
 
                 // Choose base map based on CKAN wide config
                 var baseMapLayer = this._commonBaseLayer(this.options.map_config);
+                var clearBaseLayer = new OpenLayers.Layer.OSM("None", "/img/blank.gif", {isBaseLayer: true});
 
                 var mapDiv = $("<div></div>").attr("id", "map").addClass("map")
                 var info = $("<div></div>").attr("id", "info")
@@ -305,7 +306,7 @@
                     {
                         div: "map",
                         theme: "/js/vendor/openlayers2/theme/default/style.css",
-                        layers: [baseMapLayer],
+                        layers: [baseMapLayer, clearBaseLayer],
                         maxExtent: baseMapLayer.getMaxExtent()
                         //projection: Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
                     });
