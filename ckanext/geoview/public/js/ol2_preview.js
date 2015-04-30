@@ -110,71 +110,62 @@
                     return this.div;
                 }
             }
-        )
+        );
+
 
         var layerExtractors = {
-            'kml': function (resource, layerProcessor) {
-                var url = proxy_url || resource.proxy_url || resource.url
-                layerProcessor(OL_HELPERS.createKMLLayer(url))
-            },
-            'gml': function (resource, layerProcessor) {
-                var url = proxy_url || resource.proxy_url || resource.url
-                layerProcessor(OL_HELPERS.createGMLLayer(url))
-            },
-            'geojson': function (resource, layerProcessor) {
-                var url = proxy_url || resource.proxy_url || resource.url
-                layerProcessor(OL_HELPERS.createGeoJSONLayer(url))
-            },
-            'wfs': function(resource, layerProcessor) {
-                var parsedUrl = resource.url.split('#')
-                var url = proxy_service_url || resource.proxy_service_url || parsedUrl[0]
 
-                var ftName = parsedUrl.length > 1 && parsedUrl[1]
-                OL_HELPERS.withFeatureTypesLayers(url, layerProcessor, ftName)
+            'kml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var url = proxyUrl || resource.url;
+                layerProcessor(OL_HELPERS.createKMLLayer(url));
             },
-            'wms' : function(resource, layerProcessor) {
-                var parsedUrl = resource.url.split('#')
+            'gml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var url = proxyUrl || resource.url;
+                layerProcessor(OL_HELPERS.createGMLLayer(url));
+            },
+            'geojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var url = proxyUrl || resource.url;
+                layerProcessor(OL_HELPERS.createGeoJSONLayer(url));
+            },
+            'wfs': function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var parsedUrl = resource.url.split('#');
+                var url = proxyServiceUrl || parsedUrl[0];
+
+                var ftName = parsedUrl.length > 1 && parsedUrl[1];
+                OL_HELPERS.withFeatureTypesLayers(url, layerProcessor, ftName);
+            },
+            'wms' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var parsedUrl = resource.url.split('#');
                 // use the original URL for the getMap, as there's no need for a proxy for image requests
-                var getMapUrl = parsedUrl[0].split('?')[0] // remove query if any
+                var getMapUrl = parsedUrl[0].split('?')[0]; // remove query if any
 
-                var url = proxy_service_url || resource.proxy_service_url || getMapUrl
+                var url = proxyServiceUrl || getMapUrl;
 
-                var layerName = parsedUrl.length > 1 && parsedUrl[1]
-                OL_HELPERS.withWMSLayers(url, getMapUrl, layerProcessor, layerName)
+                var layerName = parsedUrl.length > 1 && parsedUrl[1];
+                OL_HELPERS.withWMSLayers(url, getMapUrl, layerProcessor, layerName);
             },
-            'esrigeojson': function (resource, layerProcessor) {
-                var url = resource.url
-                layerProcessor(OL_HELPERS.createEsriGeoJSONLayer(url))
+            'esrigeojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var url = proxyUrl || resource.url;
+                layerProcessor(OL_HELPERS.createEsriGeoJSONLayer(url));
             },
-            'arcgis_rest': function(resource, layerProcessor) {
-                var parsedUrl = resource.url.split('#')
-                var url = proxy_service_url || resource.proxy_service_url || parsedUrl[0]
+            'arcgis_rest': function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var parsedUrl = resource.url.split('#');
+                var url = proxyServiceUrl || parsedUrl[0];
 
-                var layerName = parsedUrl.length > 1 && parsedUrl[1]
+                var layerName = parsedUrl.length > 1 && parsedUrl[1];
 
-                OL_HELPERS.withArcGisLayers(parsedUrl[0], layerProcessor, layerName)
+                OL_HELPERS.withArcGisLayers(parsedUrl[0], layerProcessor, layerName);
             },
-            'gft': function (resource, layerProcessor) {
-                var tableId = OL_HELPERS.parseURL(resource.url).query.docid
-                layerProcessor(OL_HELPERS.createGFTLayer(tableId, CKAN_GAPI_KEY))
+            'gft': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var tableId = OL_HELPERS.parseURL(resource.url).query.docid;
+                layerProcessor(OL_HELPERS.createGFTLayer(tableId, ckan.geoview.gapi_key));
             }
         }
 
-        /*
-         var createLayers = function (resource) {
-         var resourceUrl = resource.url
-         var proxiedResourceUrl = resource.proxy_url
-         var proxiedServiceUrl = resource.proxy_service_url
+        var withLayers = function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
 
-         var cons = layerExtractors[resource.format && resource.format.toLocaleLowerCase()]
-         return cons && cons(resource)
-         }
-         */
-
-        var withLayers = function (resource, layerProcessor) {
-
-            var withLayers = layerExtractors[resource.format && resource.format.toLocaleLowerCase()]
-            withLayers && withLayers(resource, layerProcessor)
+            var withLayers = layerExtractors[resource.format && resource.format.toLocaleLowerCase()];
+            withLayers && withLayers(resource, proxyUrl, proxyServiceUrl, layerProcessor);
         }
 
         return {
@@ -190,7 +181,8 @@
 
             addLayer: function (resourceLayer) {
 
-                if (this.options.ol_config.hide_overlays.toLowerCase() == "true") {
+                if (this.options.ol_config.hide_overlays &&
+                    this.options.ol_config.hide_overlays.toLowerCase() == "true") {
                     resourceLayer.setVisibility(false);
                 }
 
@@ -326,7 +318,14 @@
                 var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(EPSG4326, this.map.getProjectionObject()));
                 if (bbox) this.map.zoomToExtent(bbox);
 
-                withLayers(preload_resource, $_.bind(this.addLayer, this));
+                var proxyUrl = this.options.proxy_url;
+                var proxyServiceUrl = this.options.proxy_service_url;
+
+                if (!ckan.geoview) ckan.geoview = {};
+                ckan.geoview.googleApiKey = this.options.gapi_key;
+
+
+                withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this));
 
                 // Expand layer switcher by default
                 layerSwitcher.maximizeControl();

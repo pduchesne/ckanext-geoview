@@ -142,31 +142,21 @@ class GeoView(p.SingletonPlugin):
 
         same_domain = on_same_domain(data_dict)
 
-        p.toolkit.c.gapi_key = config.get('ckanext.geoview.gapi_key')
-
         if not data_dict['resource'].get('format'):
             data_dict['resource']['format'] = self._guess_format_from_extension(
                 data_dict['resource']['url'])
 
         if self.proxy_enabled and not same_domain:
-            p.toolkit.c.resource['proxy_url'] = proxy.get_proxified_resource_url(data_dict)
-            p.toolkit.c.resource['proxy_service_url'] = get_proxified_service_url(data_dict)
+            proxy_url = proxy.get_proxified_resource_url(data_dict)
+            proxy_service_url = get_proxified_service_url(data_dict)
         else:
-            p.toolkit.c.resource['proxy_url'] = data_dict['resource']['url']
+            proxy_url = data_dict['resource']['url']
+        gapi_key = config.get('ckanext.geoview.gapi_key')
+        if not p.toolkit.check_ckan_version(min_version='2.3'):
+            p.toolkit.c.resource['proxy_url'] = proxy_url
+            p.toolkit.c.resource['proxy_service_url'] = proxy_service_url
+            p.toolkit.c.resource['gapi_key'] = gapi_key
 
-#    def setup_template_variables(self, context, data_dict):
-#        import ckanext.resourceproxy.plugin as proxy
-#
-#        same_domain = datapreview.on_same_domain(data_dict)
-#
-#        p.toolkit.c.gapi_key = h.config.get('ckanext.geoview.gapi.key')
-#
-#        if p.toolkit.check_ckan_version('2.3'):
-#            proxy_url = proxy.get_proxified_resource_url(data_dict)
-#        else:
-#            proxy_url = data_dict['resource']['url']
-#            if self.proxy_enabled and not same_domain:
-#                proxy_url = proxy.get_proxified_resource_url(data_dict)
-#
-#        return {'proxy_service_url': json.dumps(get_proxified_service_url(data_dict)),
-#                'proxy_url': json.dumps(proxy_url)}
+        return {'proxy_service_url': proxy_service_url,
+                'proxy_url': proxy_url,
+                'gapi_key': gapi_key}
