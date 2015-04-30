@@ -112,6 +112,10 @@ are passed to the JavaScript module, where they are accessible on the `options.o
 
     }
 
+Other available configuration options are:
+
+ * `ckanext.geoview.ol_viewer.hide_overlays`: if set to True, overlays won't be visible by default (only the base layer)
+
 
 ----------------------------------
 Common base layers for Map Widgets

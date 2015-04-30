@@ -189,6 +189,11 @@
             },
 
             addLayer: function (resourceLayer) {
+
+                if (this.options.ol_config.hide_overlays.toLowerCase() == "true") {
+                    resourceLayer.setVisibility(false);
+                }
+
                 this.map.addLayer(resourceLayer)
 
                 var bbox = resourceLayer.getDataExtent && resourceLayer.getDataExtent()
