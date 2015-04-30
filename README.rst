@@ -94,6 +94,25 @@ To render Google Fusion Tables resources, a Google API Key must be provided in t
 
 This key must be granted Fusion Tables permissions. More information on obtaining such a key can be found at https://developers.google.com/fusiontables/docs/v1/using#APIKey.
 
+All configuration options relating to the OpenLayers viewer (ie those prefixed with `ckanext.geoview.ol_viewer.*`)
+are passed to the JavaScript module, where they are accessible on the `options.ol_config` object::
+
+    this.ckan.module('olpreview', function (jQuery, _) {
+
+        // ...
+
+        _onReady: function () {
+
+
+            console.log(this.options.ol_config)
+
+        }
+
+        // ...
+
+    }
+
+
 ----------------------------------
 Common base layers for Map Widgets
 ----------------------------------

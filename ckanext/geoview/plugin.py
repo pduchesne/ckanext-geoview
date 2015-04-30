@@ -45,6 +45,16 @@ def get_common_map_config():
                  if k.startswith(namespace)])
 
 
+def get_openlayers_viewer_config():
+    '''
+        Returns a dict with all configuration options related to the
+        OpenLayers viewer (ie those starting with 'ckanext.geoview.ol_viewer.')
+    '''
+    namespace = 'ckanext.geoview.ol_viewer.'
+    return dict([(k.replace(namespace, ''), v) for k, v in config.iteritems()
+                 if k.startswith(namespace)])
+
+
 class GeoView(p.SingletonPlugin):
 
     p.implements(p.IConfigurer, inherit=True)
@@ -81,6 +91,7 @@ class GeoView(p.SingletonPlugin):
     def get_helpers(self):
         return {
             'get_common_map_config_geoviews': get_common_map_config,
+            'get_openlayers_viewer_config': get_openlayers_viewer_config,
         }
 
     # IResourceView (CKAN >=2.3)

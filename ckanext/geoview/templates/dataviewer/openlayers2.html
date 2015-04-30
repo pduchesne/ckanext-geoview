@@ -3,7 +3,12 @@
 {% block page %}
 
     {% set map_config = h.get_common_map_config_geoviews() %}
-    <div id="data-preview" data-module="olpreview" data-module-map_config="{{ h.dump_json(map_config) }}">
+    {% set ol_config = h.get_openlayers_viewer_config() %}
+    <div id="data-preview"
+         data-module="olpreview"
+         data-module-map_config="{{ h.dump_json(map_config) }}"
+         data-module-ol_config="{{ h.dump_json(ol_config) }}"
+         >
         <h4 class="loading-dialog">
           <div class="loading-spinner"></div>
           <div class="left">{{ _('Loading...') }}</div>
