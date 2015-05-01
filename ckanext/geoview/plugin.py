@@ -96,6 +96,15 @@ class GeoView(p.SingletonPlugin):
 
     # IResourceView (CKAN >=2.3)
 
+    def info(self):
+        return {'name': 'geo_view',
+                'title': p.toolkit._('GeoView'),
+                'iframed': False,
+                'icon': 'link',
+                'always_available': True,
+                'default_title': p.toolkit._('GeoView'),
+                }
+
     def can_view(self, data_dict):
         format_lower = data_dict['resource'].get('format', '').lower()
         same_domain = on_same_domain(data_dict)
