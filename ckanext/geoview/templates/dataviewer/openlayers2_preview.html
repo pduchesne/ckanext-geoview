@@ -1,0 +1,9 @@
+{% extends "dataviewer/base.html" %}
+
+{% block page %}
+{% include "dataviewer/openlayers2_view.html" %}
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ h.url_for_static('/css/bootstrap.min.css') }}" type="text/css" media="screen, projection" />
+{% endblock %}

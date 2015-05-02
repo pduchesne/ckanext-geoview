@@ -135,7 +135,7 @@ class GeoView(p.SingletonPlugin):
         return self.can_view(data_dict)
 
     def preview_template(self, context, data_dict):
-        return 'dataviewer/openlayers2.html'
+        return 'dataviewer/openlayers2_preview.html'
 
     # Common for IResourceView and IResourcePreview
 
@@ -161,7 +161,7 @@ class GeoView(p.SingletonPlugin):
         else:
             proxy_url = data_dict['resource']['url']
         gapi_key = config.get('ckanext.geoview.gapi_key')
-        if not p.toolkit.check_ckan_version(min_version='2.3'):
+        if isinstance(self, p.IResourcePreview):
             p.toolkit.c.resource['proxy_url'] = proxy_url
             p.toolkit.c.resource['proxy_service_url'] = proxy_service_url
             p.toolkit.c.resource['gapi_key'] = gapi_key
