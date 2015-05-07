@@ -1,3 +1,4 @@
+import mimetypes
 import urlparse
 import os
 
@@ -55,26 +56,30 @@ def get_openlayers_viewer_config():
                  if k.startswith(namespace)])
 
 
-class GeoView(p.SingletonPlugin):
-
-    p.implements(p.IConfigurer, inherit=True)
+class GeoViewBase(p.SingletonPlugin):
+    '''This base class is for view extensions. '''
     if p.toolkit.check_ckan_version(min_version='2.3'):
         p.implements(p.IResourceView, inherit=True)
     else:
         p.implements(p.IResourcePreview, inherit=True)
+    p.implements(p.IConfigurer, inherit=True)
+    p.implements(p.IConfigurable, inherit=True)
 
-    p.implements(p.IRoutes, inherit=True)
-    p.implements(p.ITemplateHelpers, inherit=True)
-
-    # IConfigurer
+    proxy_enabled = False
+    same_domain = False
 
     def update_config(self, config):
-
         p.toolkit.add_public_directory(config, 'public')
         p.toolkit.add_template_directory(config, 'templates')
         p.toolkit.add_resource('public', 'ckanext-geoview')
 
         self.proxy_enabled = 'resource_proxy' in config.get('ckan.plugins', '')
+
+
+class OLGeoView(GeoViewBase):
+
+    p.implements(p.IRoutes, inherit=True)
+    p.implements(p.ITemplateHelpers, inherit=True)
 
     # IRoutes
 
@@ -143,8 +148,8 @@ class GeoView(p.SingletonPlugin):
         same_domain = on_same_domain(data_dict)
 
         if not data_dict['resource'].get('format'):
-            data_dict['resource']['format'] = self._guess_format_from_extension(
-                data_dict['resource']['url'])
+            data_dict['resource']['format'] = \
+                self._guess_format_from_extension(data_dict['resource']['url'])
 
         if self.proxy_enabled and not same_domain:
             proxy_url = proxy.get_proxified_resource_url(data_dict)
@@ -160,3 +165,81 @@ class GeoView(p.SingletonPlugin):
         return {'proxy_service_url': proxy_service_url,
                 'proxy_url': proxy_url,
                 'gapi_key': gapi_key}
+
+
+class GeoJSONView(GeoViewBase):
+    p.implements(p.ITemplateHelpers, inherit=True)
+
+    GeoJSON = ['gjson', 'geojson']
+
+    def update_config(self, config):
+
+        super(GeoJSONView, self).update_config(config)
+
+        mimetypes.add_type('application/json', '.geojson')
+
+    # IResourceView (CKAN >=2.3)
+    def info(self):
+        return {'name': 'geojson_view',
+                'title': 'GeoJSON',
+                'icon': 'map-marker',
+                'iframed': True,
+                'default_title': p.toolkit._('GeoJSON'),
+                }
+
+    def can_view(self, data_dict):
+        resource = data_dict['resource']
+        format_lower = resource['format'].lower()
+
+        if format_lower in self.GeoJSON:
+            return self.same_domain or self.proxy_enabled
+        return False
+
+    def view_template(self, context, data_dict):
+        return 'dataviewer/geojson.html'
+
+    # IResourcePreview (CKAN < 2.3)
+
+    def can_preview(self, data_dict):
+        format_lower = data_dict['resource']['format'].lower()
+
+        correct_format = format_lower in self.GeoJSON
+        can_preview_from_domain = (self.proxy_enabled or
+                                   data_dict['resource'].get('on_same_domain'))
+        quality = 2
+
+        if p.toolkit.check_ckan_version('2.1'):
+            if correct_format:
+                if can_preview_from_domain:
+                    return {'can_preview': True, 'quality': quality}
+                else:
+                    return {'can_preview': False,
+                            'fixable': 'Enable resource_proxy',
+                            'quality': quality}
+            else:
+                return {'can_preview': False, 'quality': quality}
+
+        return correct_format and can_preview_from_domain
+
+    def preview_template(self, context, data_dict):
+        return 'dataviewer/geojson.html'
+
+    def setup_template_variables(self, context, data_dict):
+        import ckanext.resourceproxy.plugin as proxy
+        self.same_domain = data_dict['resource'].get('on_same_domain')
+        if self.proxy_enabled and not self.same_domain:
+            data_dict['resource']['original_url'] = \
+                data_dict['resource'].get('url')
+            data_dict['resource']['url'] = \
+                proxy.get_proxified_resource_url(data_dict)
+
+    # ITemplateHelpers
+
+    def get_helpers(self):
+        return {
+            'get_common_map_config_geojson': get_common_map_config,
+        }
+
+
+class GeoJSONPreview(GeoJSONView):
+    pass
