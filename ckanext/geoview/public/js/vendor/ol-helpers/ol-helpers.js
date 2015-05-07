@@ -366,7 +366,7 @@
                         {mlDescr: candidate,
                             title: candidate.title,
                             baseLayer: false,
-                            singleTile: true,
+                            singleTile: false,
                             visibility: idx == 0,
                             projection: Mercator, // force SRS to 3857 if using OSM baselayer
                             ratio: 1
