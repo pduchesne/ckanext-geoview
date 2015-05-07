@@ -4,13 +4,13 @@ ckanext-geoview - Geospatial viewer for CKAN resources
 
 
 This extension contains view plugins to display geospatial files and services in CKAN.
-It was originally developed by `Philippe Duchesne`_.
+It contains an OpenLayers based viewer originally developed by `Philippe Duchesne`_ and other view plugins that
+used to be part of ckanext-spatial_.
 
 **Note:** This is a work in progress, if you can help with `OpenLayers`_ or `Leaflet`_ development,
 check the `Issues` section for what needs to be done or add a new issue.
 
 
-.. image:: http://i.imgur.com/wCQm2Uh.jpg
 
 ------------
 Installation
@@ -53,8 +53,14 @@ do::
 Available plugins
 -----------------
 
+* `OpenLayers Viewer`_
+* `Leaflet GeoJSON Viewer`_
+
+
 OpenLayers Viewer
 -----------------
+
+.. image:: http://i.imgur.com/wCQm2Uh.jpg
 
 The OpenLayers_ viewer provides access to different geospatial formats and services:
 
@@ -115,6 +121,25 @@ are passed to the JavaScript module, where they are accessible on the `options.o
 Other available configuration options are:
 
  * `ckanext.geoview.ol_viewer.hide_overlays`: if set to True, overlays won't be visible by default (only the base layer)
+
+
+Leaflet GeoJSON Viewer
+----------------------
+
+**Note**: This plugin used to be part of ckanext-spatial_.
+
+.. image:: http://i.imgur.com/4w9du2T.png
+
+The Leaflet_ GeoJSON_ viewer will render GeoJSON files on a map and add a popup showing the features properties, for those resources that have a ``geojson`` format.
+
+To enable it, add ``geojson_view`` to your ``ckan.plugins`` setting. (use ``geojson_preview`` if you are using CKAN < 2.3)::
+
+    ckan.plugins = ... resource_proxy geojson_view
+
+On CKAN >= 2.3, if you want the views to be created by default on all GeoJSON files, add the plugin to the following setting::
+
+
+    ckan.views.default_views = ... geojson_view
 
 
 ----------------------------------
@@ -191,3 +216,5 @@ To publish a new version to PyPI follow these steps:
 .. _Philippe Duchesne: https://github.com/pduchesne
 .. _OpenLayers: http://openlayers.org
 .. _Leaflet: http://leafletjs.com/
+.. _GeoJSON: http://geojson.org/
+.. _ckanext-spatial: https://github.com/ckan/ckanext-spatial
