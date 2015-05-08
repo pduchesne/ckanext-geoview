@@ -23,39 +23,15 @@ ckan.module('geojsonpreview', function (jQuery, _) {
       // hack to make leaflet use a particular location to look for images
       L.Icon.Default.imagePath = this.options.site_url + 'js/vendor/leaflet/images';
 
-
-      // use CORS, if supported by browser and server
-      if (jQuery.support.cors && preload_resource['original_url'] !== undefined) {
-        jQuery.getJSON(preload_resource['original_url'])
-        .done(
-          function(data){
-            self.showPreview(data);
-          })
-        .fail(
-          function(jqxhr, textStatus, error) {
-            jQuery.getJSON(preload_resource['url'])
-            .done(
-              function(data){
-                self.showPreview(data);
-              })
-            .fail(
-              function(jqXHR, textStatus, errorThrown) {
-                self.showError(jqXHR, textStatus, errorThrown);
-              }
-            );
-          }
-        );
-      } else {
-        jQuery.getJSON(preload_resource['url']).done(
-          function(data){
-            self.showPreview(data);
-          })
-        .fail(
-          function(jqXHR, textStatus, errorThrown) {
-            self.showError(jqXHR, textStatus, errorThrown);
-          }
-        );
-      }
+      jQuery.getJSON(preload_resource['url']).done(
+        function(data){
+          self.showPreview(data);
+        })
+      .fail(
+        function(jqXHR, textStatus, errorThrown) {
+          self.showError(jqXHR, textStatus, errorThrown);
+        }
+      );
     },
 
     showError: function (jqXHR, textStatus, errorThrown) {
