@@ -243,3 +243,75 @@ class GeoJSONView(GeoViewBase):
 
 class GeoJSONPreview(GeoJSONView):
     pass
+
+
+class WMTSView(GeoViewBase):
+    p.implements(p.ITemplateHelpers, inherit=True)
+
+    WMTS = ['wmts']
+
+    # IResourceView (CKAN >=2.3)
+    def info(self):
+        return {'name': 'wmts_view',
+                'title': 'wmts',
+                'icon': 'map-marker',
+                'iframed': True,
+                'default_title': p.toolkit._('WMTS'),
+                }
+
+    def can_view(self, data_dict):
+        resource = data_dict['resource']
+        format_lower = resource['format'].lower()
+
+        if format_lower in self.WMTS:
+            return self.same_domain or self.proxy_enabled
+        return False
+
+    def view_template(self, context, data_dict):
+        return 'dataviewer/wmts.html'
+
+    # IResourcePreview (CKAN < 2.3)
+
+    def can_preview(self, data_dict):
+        format_lower = data_dict['resource']['format'].lower()
+
+        correct_format = format_lower in self.WMTS
+        can_preview_from_domain = (self.proxy_enabled or
+                                   data_dict['resource'].get('on_same_domain'))
+        quality = 2
+
+        if p.toolkit.check_ckan_version('2.1'):
+            if correct_format:
+                if can_preview_from_domain:
+                    return {'can_preview': True, 'quality': quality}
+                else:
+                    return {'can_preview': False,
+                            'fixable': 'Enable resource_proxy',
+                            'quality': quality}
+            else:
+                return {'can_preview': False, 'quality': quality}
+
+        return correct_format and can_preview_from_domain
+
+    def preview_template(self, context, data_dict):
+        return 'dataviewer/wmts.html'
+
+    def setup_template_variables(self, context, data_dict):
+        import ckanext.resourceproxy.plugin as proxy
+        self.same_domain = data_dict['resource'].get('on_same_domain')
+        if self.proxy_enabled and not self.same_domain:
+            data_dict['resource']['original_url'] = \
+                data_dict['resource'].get('url')
+            data_dict['resource']['url'] = \
+                proxy.get_proxified_resource_url(data_dict)
+
+    ## ITemplateHelpers
+
+    def get_helpers(self):
+        return {
+            'get_common_map_config_wmts' : get_common_map_config,
+        }
+
+
+class WMTSPreview(WMTSView):
+    pass
