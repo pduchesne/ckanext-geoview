@@ -101,6 +101,14 @@ class OLGeoView(GeoViewBase):
 
     # IResourceView (CKAN >=2.3)
 
+    def info(self):
+        return {'name': 'geo_view',
+                'title': 'Map viewer (OpenLayers)',
+                'icon': 'globe',
+                'iframed': True,
+                'default_title': p.toolkit._('Map viewer'),
+                }
+
     def can_view(self, data_dict):
         format_lower = data_dict['resource'].get('format', '').lower()
         same_domain = on_same_domain(data_dict)
