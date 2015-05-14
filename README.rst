@@ -55,6 +55,7 @@ Available plugins
 
 * `OpenLayers Viewer`_
 * `Leaflet GeoJSON Viewer`_
+* `Leaflet WMTS Viewer`_
 
 
 OpenLayers Viewer
@@ -140,6 +141,23 @@ On CKAN >= 2.3, if you want the views to be created by default on all GeoJSON fi
 
 
     ckan.views.default_views = ... geojson_view
+
+
+Leaflet WMTS Viewer
+----------------------
+
+.. image:: http://i.imgur.com/MderhVH.png
+
+The Leaflet_ WMTS viewer will render WMTS (Web Map Tile Service) layers on a map for those resources that have a ``wmts`` format.
+
+To enable it, add ``wmts_view`` to your ``ckan.plugins`` setting. (use ``wmts_preview`` if you are using CKAN < 2.3)::
+
+    ckan.plugins = ... resource_proxy wmts_view
+
+On CKAN >= 2.3, if you want the views to be created by default on all WMTS resources, add the plugin to the following setting::
+
+
+    ckan.views.default_views = ... wmts_view
 
 
 ----------------------------------
