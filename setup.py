@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '0.0.6'
+version = '0.0.7'
 
 setup(
     name='ckanext-geoview',
@@ -22,7 +22,9 @@ setup(
     ],
     entry_points='''
     [ckan.plugins]
-    geo_view=ckanext.geoview.plugin:GeoView
-    geo_preview=ckanext.geoview.plugin:GeoView
+    geo_view=ckanext.geoview.plugin:OLGeoView
+    geo_preview=ckanext.geoview.plugin:OLGeoView
+    geojson_view=ckanext.geoview.plugin:GeoJSONView
+    geojson_preview=ckanext.geoview.plugin:GeoJSONPreview
     ''',
 )
