@@ -53,7 +53,6 @@ ckan.module('wmtspreview', function (jQuery, _) {
       function layerChange(e) {
 	var url = e.layer._url;
 	overlay = e.layer;
-	self.map.fitBounds(mapLatLngBounds[url.substring(url.lastIndexOf('LAYER='), url.indexOf('&STYLE')).split('=')[1]]);
       }
 
       function loadEPSG(url, callback) {
