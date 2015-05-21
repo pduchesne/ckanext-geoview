@@ -43,7 +43,15 @@
     background-position: -128px -62px;
 }
 
+.label[data-format=wmts] {
+    background-color: #3333ff;
+}
+.format-label[data-format=wmts],
+.format-label[data-format*=wmts] {
+    background: url("../../img/gis-resources-sprite-icons.png") no-repeat 0 0;
+    background-position: -162px -62px;
+}
+
 .label[data-format=arcgis_rest] {
     background-color: #5c3ee0;
 }
-
