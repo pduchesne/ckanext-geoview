@@ -14,37 +14,15 @@ ckan.module('wmtspreview', function (jQuery, _) {
         }
       });
 
-      // use CORS, if supported by browser and server
-      if (jQuery.support.cors && preload_resource['original_url'] !== undefined) {
-        jQuery.get(preload_resource['original_url'])
-        .done(
-          function(data){
-            self.showPreview(preload_resource['original_url'], data);
-          })
-        .fail(
-          function(jqxhr, textStatus, error) {
-            jQuery.get(preload_resource['url']).done(
-              function(data){
-                self.showPreview(preload_resource['original_url'], data);
-              })
-            .fail(
-              function(jqXHR, textStatus, errorThrown) {
-                self.showError(jqXHR, textStatus, errorThrown);
-              }
-            );
-          }
-        );
-      } else {
-        jQuery.get(preload_resource['url']).done(
-          function(data){
-            self.showPreview(preload_resource['original_url'], data);
-          })
-        .fail(
-          function(jqXHR, textStatus, errorThrown) {
-            self.showError(jqXHR, textStatus, errorThrown);
-          }
-        );
-      }
+      jQuery.get(preload_resource['url']).done(
+        function(data){
+          self.showPreview(preload_resource['original_url'], data);
+        })
+      .fail(
+        function(jqXHR, textStatus, errorThrown) {
+          self.showError(jqXHR, textStatus, errorThrown);
+        }
+      );
     },
 
     showError: function (jqXHR, textStatus, errorThrown) {
