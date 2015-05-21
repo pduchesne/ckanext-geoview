@@ -1,0 +1,67 @@
+html, body {
+  max-height: 600px;
+  padding: 0;
+  margin: 0;
+  background: none;
+}
+
+#map {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+#map .table{
+  width: 300px;
+}
+
+#map label {
+  font-weight: normal;
+}
+
+#map label:after {
+  content: none;
+}
+
+#map input {
+  width: auto;
+  top: auto;
+}
+
+.leaflet-control-layers {
+  box-shadow: 0 1px 7px rgba(0,0,0,0.4);
+  background: #f8f8f9;
+  -webkit-border-radius: 5px;
+  border-radius: 5px;
+  overflow: auto;
+  max-height: 200px;
+}
+
+.ui-opacity {
+  box-shadow: 0 0 8px rgba(0,0,0,0.4);
+  background: rgba(255, 255, 255, 0.8);
+  position: absolute;
+  left: 13px;
+  top: 70px;
+  height: 200px;
+  width: 22px;
+  border: 1px solid #888;
+  border-radius: 5px;
+  z-index: 1000;
+ }
+
+.ui-opacity .handle {
+  position: absolute;
+  background: #404040;
+  left: 0;
+  top: 20px;
+  width: 22px;
+  height: 10px;
+  border-radius: 1px;
+  cursor: pointer;
+  cursor: ns-resize;
+}
+
+.ui-opacity .handle:hover {
+  background: #303030;
+}
