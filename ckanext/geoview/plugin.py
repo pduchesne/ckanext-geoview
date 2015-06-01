@@ -146,6 +146,8 @@ class GeoView(p.SingletonPlugin):
             data_dict['resource']['format'] = self._guess_format_from_extension(
                 data_dict['resource']['url'])
 
+        proxy_service_url = None
+
         if self.proxy_enabled and not same_domain:
             proxy_url = proxy.get_proxified_resource_url(data_dict)
             proxy_service_url = get_proxified_service_url(data_dict)
