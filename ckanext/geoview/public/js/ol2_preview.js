@@ -283,7 +283,7 @@
 
                 // Choose base map based on CKAN wide config
                 var baseMapLayer = this._commonBaseLayer(this.options.map_config);
-                var clearBaseLayer = new OpenLayers.Layer.OSM("None", "/img/blank.gif", {isBaseLayer: true});
+                var clearBaseLayer = new OpenLayers.Layer.OSM("None", "/img/blank.gif", {isBaseLayer: true, attribution: ''});
 
                 var mapDiv = $("<div></div>").attr("id", "map").addClass("map")
                 var info = $("<div></div>").attr("id", "info")
