@@ -199,7 +199,8 @@ class GeoJSONView(GeoViewBase):
 
     def can_view(self, data_dict):
         resource = data_dict['resource']
-        format_lower = resource['format'].lower()
+
+        format_lower = resource.get('format', '').lower()
 
         if format_lower in self.GeoJSON:
             return self.same_domain or self.proxy_enabled
