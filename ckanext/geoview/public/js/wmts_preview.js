@@ -16,7 +16,7 @@ ckan.module('wmtspreview', function (jQuery, _) {
 
       jQuery.get(preload_resource['url']).done(
         function(data){
-          self.showPreview(preload_resource['original_url'], data);
+          self.showPreview(data);
         })
       .fail(
         function(jqXHR, textStatus, errorThrown) {
@@ -33,12 +33,12 @@ ckan.module('wmtspreview', function (jQuery, _) {
       }
     },
 
-    showPreview: function (url, data) {
+    showPreview: function (wmtsInfo) {
       var self = this;
       var EPSG4326 = proj4('EPSG:4326');
       var xmlPathPrefix = 'Contents Layer';
-      var nameSpace = ($(data).find('ows\\:Identifier').length != 0) ? 'ows\\:' : '';
-      var tileUrlPrefix = $(data).find(nameSpace + 'Operation[name="GetTile"]').find(nameSpace + 'Get:contains("KVP")').attr('xlink:href');
+      var nameSpace = ($(wmtsInfo).find('ows\\:Identifier').length != 0) ? 'ows\\:' : '';
+      var tileUrlPrefix = $(wmtsInfo).find(nameSpace + 'Operation[name="GetTile"]').find(nameSpace + 'Get:contains("KVP")').attr('xlink:href');
       var bboxName;
       var mapInfos = [];
       var tileVariables = {TileMatrixSet: '{tileMatrixSet}', TileMatrix: '{z}', Style: '{style}', TileRow: '{y}', TileCol: '{x}'};
@@ -77,16 +77,16 @@ ckan.module('wmtspreview', function (jQuery, _) {
       }
 
       // Try to obtain the WGS84BoundingBox or BoundingBox.
-      if ($(data).find(nameSpace + 'WGS84BoundingBox').length != 0) {
+      if ($(wmtsInfo).find(nameSpace + 'WGS84BoundingBox').length != 0) {
         bboxName = 'WGS84BoundingBox';
-      } else if ($(data).find(nameSpace + 'BoundingBox').length != 0) {
+      } else if ($(wmtsInfo).find(nameSpace + 'BoundingBox').length != 0) {
 	bboxName = 'BoundingBox';
       } else {
         bboxName = '';
       }
 
       // Collect information for each map.
-      $(data).find(xmlPathPrefix).each(function(i, selectedElement) {
+      $(wmtsInfo).find(xmlPathPrefix).each(function(i, selectedElement) {
         mapInfos.push({
           'id': $(selectedElement).find(nameSpace + 'Identifier').first().text(),
           'title': $(selectedElement).find(nameSpace + 'Title').first().text(),
@@ -110,7 +110,7 @@ ckan.module('wmtspreview', function (jQuery, _) {
 
       // If we only have BoundingBox info, load crs from epsg.io.
       if (bboxName == 'BoundingBox') {
-        xmlMapCrs = $(data).find(xmlPathPrefix).find(nameSpace + bboxName).first().attr("crs");
+        xmlMapCrs = $(wmtsInfo).find(xmlPathPrefix).find(nameSpace + bboxName).first().attr("crs");
         EPSG = xmlMapCrs.substring(xmlMapCrs.indexOf("EPSG::") + 6, xmlMapCrs.length);
         loadEPSG('http://epsg.io/' + EPSG + '.js', function() {
 	  // Except for EPSG:3821 (which is incomplete)
