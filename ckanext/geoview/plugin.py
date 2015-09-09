@@ -144,9 +144,13 @@ class OLGeoView(GeoViewBase):
     # Common for IResourceView and IResourcePreview
 
     def _guess_format_from_extension(self, url):
-        parsed_url = urlparse.urlparse(url)
-        format_lower = (os.path.splitext(parsed_url.path)[1][1:]
-                        .encode('ascii', 'ignore').lower())
+        try:
+            parsed_url = urlparse.urlparse(url)
+            format_lower = (os.path.splitext(parsed_url.path)[1][1:]
+                            .encode('ascii', 'ignore').lower())
+        except ValueError, e:
+            log.error('Invalid URL: {0}, {1}'.format(url, e))
+            format_lower = ''
 
         return format_lower
 
