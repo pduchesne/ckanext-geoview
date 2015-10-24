@@ -285,7 +285,7 @@
                 var proxyUrl = this.options.proxy_url;
                 var proxyServiceUrl = this.options.proxy_service_url;
                 ckan.geoview = (this.options.resourceView && JSON.parse(this.options.resourceView)) || {};
-                ckan.geoview.googleApiKey = this.options.gapi_key;
+                ckan.geoview.gapi_key = this.options.gapi_key;
 
                 // Choose base map based on CKAN wide config
                 var baseMapLayer = this._commonBaseLayer(this.options.map_config);
@@ -359,6 +359,12 @@
 
                 var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(EPSG4326, this.map.getProjectionObject()));
                 if (bbox) this.map.zoomToExtent(bbox);
+
+                var proxyUrl = this.options.proxy_url;
+                var proxyServiceUrl = this.options.proxy_service_url;
+
+                if (!ckan.geoview) ckan.geoview = {};
+                ckan.geoview.googleApiKey = this.options.gapi_key;
 
 
                 withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this));
