@@ -142,7 +142,7 @@
                 var url = proxyServiceUrl || getMapUrl;
 
                 var layerName = parsedUrl.length > 1 && parsedUrl[1];
-                OL_HELPERS.withWMSLayers(url, getMapUrl, layerProcessor, layerName);
+                OL_HELPERS.withWMSLayers(url, getMapUrl, layerProcessor, layerName, true /* useTiling*/ );
             },
             'esrigeojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
                 var url = proxyUrl || resource.url;
