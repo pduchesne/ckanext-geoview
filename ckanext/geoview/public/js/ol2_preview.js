@@ -322,7 +322,7 @@
                 var proxyServiceUrl = this.options.proxy_service_url;
 
                 if (!ckan.geoview) ckan.geoview = {};
-                ckan.geoview.googleApiKey = this.options.gapi_key;
+                ckan.geoview.gapi_key = this.options.gapi_key;
 
 
                 withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this));
