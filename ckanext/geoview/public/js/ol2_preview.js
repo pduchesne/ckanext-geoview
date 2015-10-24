@@ -154,7 +154,7 @@
 
                 var layerName = parsedUrl.length > 1 && parsedUrl[1];
 
-                OL_HELPERS.withArcGisLayers(parsedUrl[0], layerProcessor, layerName);
+                OL_HELPERS.withArcGisLayers(url, layerProcessor, layerName, parsedUrl[0]);
             },
             'gft': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
                 var tableId = OL_HELPERS.parseURL(resource.url).query.docid;
