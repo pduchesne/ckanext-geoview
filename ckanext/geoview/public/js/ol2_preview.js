@@ -306,7 +306,7 @@
                 });
 
                 var eventListeners
-                if (ckan.geoview['feature_hoveron'])
+                if ( ('feature_hoveron' in ckan.geoview) ? ckan.geoview['feature_hoveron'] : this.options.ol_config.default_feature_hoveron)
                     eventListeners = {
                     featureover: function (e) {
                         e.feature.renderIntent = "select";
