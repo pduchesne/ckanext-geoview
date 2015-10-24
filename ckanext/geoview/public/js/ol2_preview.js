@@ -281,6 +281,12 @@
 
             _onReady: function () {
 
+                // gather options and config for this view
+                var proxyUrl = this.options.proxy_url;
+                var proxyServiceUrl = this.options.proxy_service_url;
+                ckan.geoview = (this.options.resourceView && JSON.parse(this.options.resourceView)) || {};
+                ckan.geoview.googleApiKey = this.options.gapi_key;
+
                 // Choose base map based on CKAN wide config
                 var baseMapLayer = this._commonBaseLayer(this.options.map_config);
                 var clearBaseLayer = new OpenLayers.Layer.OSM("None", "/img/blank.gif", {isBaseLayer: true, attribution: ''});
@@ -299,12 +305,48 @@
                     html: true
                 });
 
+                var eventListeners
+                if (ckan.geoview['feature_hoveron'])
+                    eventListeners = {
+                    featureover: function (e) {
+                        e.feature.renderIntent = "select";
+                        e.feature.layer.drawFeature(e.feature);
+                        var pixel = event.xy
+                        info.css({
+                            left: (pixel.x + 10) + 'px',
+                            top: (pixel.y - 15) + 'px'
+                        });
+                        info.currentFeature = e.feature
+                        info.tooltip('hide')
+                            .empty()
+                        var tooltip = "<div>" + (e.feature.data.name || e.feature.fid) + "</div><table>";
+                        for (var prop in e.feature.data) tooltip += "<tr><td>" + prop + "</td><td>" + e.feature.data[prop] + "</td></tr></div>"
+                        tooltip += "</table>"
+                        info.attr('data-original-title', tooltip)
+                            .tooltip('fixTitle')
+                            .tooltip('show');
+                    },
+                    featureout: function (e) {
+                        e.feature.renderIntent = "default"
+                        e.feature.layer.drawFeature(e.feature)
+                        if (info.currentFeature == e.feature) {
+                            info.tooltip('hide')
+                            info.currentFeature = undefined
+                        }
+
+                    },
+                    featureclick: function (e) {
+                        //log("Map says: " + e.feature.id + " clicked on " + e.feature.layer.name);
+                    }
+                }
+
                 this.map = new OpenLayers.Map(
                     {
                         div: "map",
                         theme: "/js/vendor/openlayers2/theme/default/style.css",
                         layers: [baseMapLayer, clearBaseLayer],
-                        maxExtent: baseMapLayer.getMaxExtent()
+                        maxExtent: baseMapLayer.getMaxExtent(),
+                        eventListeners: eventListeners
                         //projection: Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
                     });
 
@@ -317,12 +359,6 @@
 
                 var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(EPSG4326, this.map.getProjectionObject()));
                 if (bbox) this.map.zoomToExtent(bbox);
-
-                var proxyUrl = this.options.proxy_url;
-                var proxyServiceUrl = this.options.proxy_service_url;
-
-                if (!ckan.geoview) ckan.geoview = (this.options.resourceView && JSON.parse(this.options.resourceView)) || {};
-                ckan.geoview.googleApiKey = this.options.gapi_key;
 
 
                 withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this));
