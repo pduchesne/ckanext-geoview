@@ -344,7 +344,7 @@
     }
 
 
-    OL_HELPERS.withWMSLayers = function (capaUrl, getMapUrl, layerProcessor, layerName) {
+    OL_HELPERS.withWMSLayers = function (capaUrl, getMapUrl, layerProcessor, layerName, useTiling) {
 
         parseWMSCapas(
             capaUrl,
@@ -366,7 +366,7 @@
                         {mlDescr: candidate,
                             title: candidate.title,
                             baseLayer: false,
-                            singleTile: true,
+                            singleTile: !useTiling,
                             visibility: idx == 0,
                             projection: Mercator, // force SRS to 3857 if using OSM baselayer
                             ratio: 1
@@ -540,6 +540,6 @@
         });
     };
 
-}) ()
+}) ();
 
 
