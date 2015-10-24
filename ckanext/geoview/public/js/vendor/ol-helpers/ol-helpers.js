@@ -8,9 +8,9 @@
 
     var $_ = _ // keep pointer to underscore, as '_' will may be overridden by a closure variable when down the stack
 
-    var EPSG4326 = new OpenLayers.Projection("EPSG:4326")
-    var Mercator = new OpenLayers.Projection("EPSG:3857")
-    var CRS84 = new OpenLayers.Projection("urn:x-ogc:def:crs:EPSG:4326")
+    var EPSG4326 = OL_HELPERS.EPSG4326 = new OpenLayers.Projection("EPSG:4326")
+    var Mercator = OL_HELPERS.Mercator = new OpenLayers.Projection("EPSG:3857")
+    var CRS84 = OL_HELPERS.CRS84 = new OpenLayers.Projection("urn:x-ogc:def:crs:EPSG:4326")
 
     var MAX_FEATURES = 300
 
@@ -366,7 +366,7 @@
                         {mlDescr: candidate,
                             title: candidate.title,
                             baseLayer: false,
-                            singleTile: false,
+                            singleTile: true,
                             visibility: idx == 0,
                             projection: Mercator, // force SRS to 3857 if using OSM baselayer
                             ratio: 1
@@ -419,14 +419,14 @@
         return esrijson
     }
 
-    OL_HELPERS.withArcGisLayers = function (url, layerProcessor, layerName) {
+    OL_HELPERS.withArcGisLayers = function (url, layerProcessor, layerName, layerBaseUrl) {
 
         parseArcGisDescriptor(
             url,
             function (descriptor) {
 
                 if (descriptor.type == "Feature Layer") {
-                    var newLayer = OL_HELPERS.createArcgisFeatureLayer(url, descriptor, true)
+                    var newLayer = OL_HELPERS.createArcgisFeatureLayer(layerBaseUrl || url, descriptor, true)
                     layerProcessor(newLayer)
                 } else if (descriptor.type == "Group Layer") {
                     // TODO intermediate layer
@@ -434,7 +434,7 @@
                     var isFirst = true
                     $_.each(descriptor.layers, function (layer, idx) {
                         if (!layer.subLayerIds) {
-                            var newLayer = OL_HELPERS.createArcgisFeatureLayer(url + "/" + layer.id, layer, isFirst)
+                            var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/" + layer.id, layer, isFirst)
                             layerProcessor(newLayer)
                             isFirst = false
                         }
@@ -448,15 +448,30 @@
 
     OL_HELPERS.createArcgisFeatureLayer = function (url, descriptor, visible) {
 
+        var context = {
+            getColor: function(feature) {
+                return (feature.data.RGB && "rgb("+feature.data.RGB+")") || "#ee9900"
+            }
+        };
+        var template = {
+            fillColor: "${getColor}", // using context.getColor(feature)
+            fillOpacity: 0.6,
+            strokeColor: "#404040",
+            strokeWidth: 0.5
+        };
+
         var esrijson = new OpenLayers.Layer.Vector(
             descriptor.name,
             {
                 projection: EPSG4326,
                 strategies: [new OpenLayers.Strategy.BBOXWithMax({maxFeatures: MAX_FEATURES, ratio: 1})],
                 visibility: visible,
+                styleMap: new OpenLayers.StyleMap({
+                    'default': new OpenLayers.Style(template, {context: context})
+                }),
                 protocol: new OpenLayers.Protocol.Script({
                     url: url +   //build ArcGIS Server query string
-                        "/query?" +
+                        "/query?dummy=1&" +
                         //"geometry=-180%2C-90%2C180%2C90&" +
                         "geometryType=esriGeometryEnvelope&" +
                         "inSR=4326&" +
@@ -525,4 +540,6 @@
         });
     };
 
-})();
+}) ()
+
+

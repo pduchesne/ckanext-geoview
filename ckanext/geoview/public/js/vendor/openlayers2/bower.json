@@ -2,6 +2,7 @@
   "name": "ol2-bower",
   "description": "OpenLayers 2 Bower descriptor",
   "version": "2.13.1",
+  "main": ["OpenLayers.js"],
   "keywords": [
     "openlayers",
     "bower"
