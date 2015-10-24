@@ -321,7 +321,7 @@
                 var proxyUrl = this.options.proxy_url;
                 var proxyServiceUrl = this.options.proxy_service_url;
 
-                if (!ckan.geoview) ckan.geoview = {};
+                if (!ckan.geoview) ckan.geoview = (this.options.resourceView && JSON.parse(this.options.resourceView)) || {};
                 ckan.geoview.googleApiKey = this.options.gapi_key;
 
 

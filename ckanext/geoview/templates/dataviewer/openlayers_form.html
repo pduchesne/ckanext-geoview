@@ -1,0 +1,3 @@
+{% import 'macros/form.html' as form %}
+
+{{ form.checkbox('feature_hoveron', label=_('Display Feature Info on Hover'), value=True, checked=data.feature_hoveron, error=errors.feature_hoveron) }}

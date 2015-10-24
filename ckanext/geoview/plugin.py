@@ -5,14 +5,18 @@ import os
 from logging import getLogger
 
 from pylons import config
+from ckan.common import json
 
 from ckan import plugins as p
 import ckan.lib.helpers as h
+
 try:
     from ckan.lib.datapreview import on_same_domain
 except ImportError:
     from ckan.lib.datapreview import _on_same_domain as on_same_domain
 
+ignore_empty = p.toolkit.get_validator('ignore_empty')
+boolean_validator = p.toolkit.get_validator('boolean_validator')
 
 log = getLogger(__name__)
 
@@ -107,6 +111,7 @@ class OLGeoView(GeoViewBase):
                 'icon': 'globe',
                 'iframed': True,
                 'default_title': p.toolkit._('Map viewer'),
+                'schema': {'feature_hoveron': [ignore_empty, boolean_validator]},
                 }
 
     def can_view(self, data_dict):
@@ -131,6 +136,9 @@ class OLGeoView(GeoViewBase):
 
     def view_template(self, context, data_dict):
         return 'dataviewer/openlayers2.html'
+
+    def form_template(self, context, data_dict):
+        return 'dataviewer/openlayers_form.html'
 
     # IResourcePreview (CKAN < 2.3)
 
@@ -176,7 +184,8 @@ class OLGeoView(GeoViewBase):
             p.toolkit.c.resource['proxy_service_url'] = proxy_service_url
             p.toolkit.c.resource['gapi_key'] = gapi_key
 
-        return {'proxy_service_url': proxy_service_url,
+        return {'resource_view_json': json.dumps(data_dict['resource_view']),
+                'proxy_service_url': proxy_service_url,
                 'proxy_url': proxy_url,
                 'gapi_key': gapi_key}
 

@@ -11,6 +11,7 @@
          data-module-proxy_service_url="{{ proxy_service_url or c.resource.proxy_service_url }}"
          data-module-map_config="{{ h.dump_json(map_config) }}"
          data-module-ol_config="{{ h.dump_json(ol_config) }}"
+         data-module-resource-view = "{{ h.dump_json(resource_view_json) }}"
          >
         <h4 class="loading-dialog">
           <div class="loading-spinner"></div>
