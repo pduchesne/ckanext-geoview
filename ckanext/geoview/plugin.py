@@ -184,7 +184,7 @@ class OLGeoView(GeoViewBase):
             p.toolkit.c.resource['proxy_service_url'] = proxy_service_url
             p.toolkit.c.resource['gapi_key'] = gapi_key
 
-        return {'resource_view_json': json.dumps(data_dict['resource_view']),
+        return {'resource_view_json': 'resource_view' in data_dict and json.dumps(data_dict['resource_view']),
                 'proxy_service_url': proxy_service_url,
                 'proxy_url': proxy_url,
                 'gapi_key': gapi_key}
