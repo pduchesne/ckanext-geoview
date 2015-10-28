@@ -305,7 +305,7 @@
                         theme: "/js/vendor/openlayers2/theme/default/style.css",
                         layers: [baseMapLayer, clearBaseLayer],
                         maxExtent: baseMapLayer.getMaxExtent()
-                        //projection: Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
+                        //projection: OL_HELPERS.Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
                     });
 
                 layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher()
@@ -315,7 +315,7 @@
                 var bboxFrag;
                 var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
 
-                var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(EPSG4326, this.map.getProjectionObject()));
+                var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(OL_HELPERS.EPSG4326, this.map.getProjectionObject()));
                 if (bbox) this.map.zoomToExtent(bbox);
 
                 var proxyUrl = this.options.proxy_url;
