@@ -3,5 +3,4 @@ syntax: glob
 *.egg-info
 *.swp
 *~
-dist
 build
