@@ -44,7 +44,7 @@ ckan.module('geojsonpreview', function (jQuery, _) {
 
     showPreview: function (geojsonFeature) {
       var self = this;
-      var gjLayer = L.geoJson(geojsonFeature, {
+      var gjLayer = L.Proj.geoJson(geojsonFeature, {
         style: self.options.style,
         onEachFeature: function(feature, layer) {
           var body = '';
