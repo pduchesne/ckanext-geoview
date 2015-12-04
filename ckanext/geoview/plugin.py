@@ -111,8 +111,11 @@ class OLGeoView(GeoViewBase):
                 'icon': 'globe',
                 'iframed': True,
                 'default_title': p.toolkit._('Map viewer'),
-                'schema': {'feature_hoveron': [ignore_empty, boolean_validator]},
-                }
+                'schema': {
+                    'feature_hoveron': [ignore_empty, boolean_validator],
+                    'feature_style': [ignore_empty]
+                },
+               }
 
     def can_view(self, data_dict):
         format_lower = data_dict['resource'].get('format', '').lower()

@@ -6,6 +6,7 @@
 
     this.ckan.module('olpreview', function (jQuery, _) {
 
+        ckan.geoview = ckan.geoview || {}
 
         OpenLayers.Control.CKANLayerSwitcher = OpenLayers.Class(OpenLayers.Control.LayerSwitcher,
             {
@@ -113,7 +114,7 @@
         );
 
 
-        var layerExtractors = {
+        ckan.geoview.layerExtractors = {
 
             'kml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
                 var url = proxyUrl || resource.url;
@@ -164,7 +165,7 @@
 
         var withLayers = function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
 
-            var withLayers = layerExtractors[resource.format && resource.format.toLocaleLowerCase()];
+            var withLayers = ckan.geoview.layerExtractors[resource.format && resource.format.toLocaleLowerCase()];
             withLayers && withLayers(resource, proxyUrl, proxyServiceUrl, layerProcessor);
         }
 
@@ -180,6 +181,11 @@
             },
 
             addLayer: function (resourceLayer) {
+
+                if (ckan.geoview && ckan.geoview.feature_style) {
+                    var styleMapJson = JSON.parse(ckan.geoview.feature_style)
+                    resourceLayer.styleMap = new OpenLayers.StyleMap(styleMapJson)
+                }
 
                 if (this.options.ol_config.hide_overlays &&
                     this.options.ol_config.hide_overlays.toLowerCase() == "true") {
@@ -284,7 +290,10 @@
                 // gather options and config for this view
                 var proxyUrl = this.options.proxy_url;
                 var proxyServiceUrl = this.options.proxy_service_url;
-                ckan.geoview = (this.options.resourceView && JSON.parse(this.options.resourceView)) || {};
+
+                if (this.options.resourceView)
+                    $_.extend(ckan.geoview, JSON.parse(this.options.resourceView))
+
                 ckan.geoview.gapi_key = this.options.gapi_key;
 
                 // Choose base map based on CKAN wide config
@@ -363,7 +372,6 @@
                 var proxyUrl = this.options.proxy_url;
                 var proxyServiceUrl = this.options.proxy_service_url;
 
-                if (!ckan.geoview) ckan.geoview = {};
                 ckan.geoview.googleApiKey = this.options.gapi_key;
 
 
