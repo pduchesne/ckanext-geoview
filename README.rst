@@ -137,6 +137,7 @@ Other available configuration options are:
 
 Each instance of a view has the following configuration options that can override the global configuration :
  * `feature_hoveron`: if set to True, feature data popup will be displayed when hovering on
+ * `feature_style`: JSON representation of an OpenLayers style, as accepted by the StyleMap constructor
 
 Leaflet GeoJSON Viewer
 ----------------------
