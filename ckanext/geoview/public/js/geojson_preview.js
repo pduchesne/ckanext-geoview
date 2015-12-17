@@ -21,7 +21,7 @@ ckan.module('geojsonpreview', function (jQuery, _) {
       self.map = ckan.commonLeafletMap('map', this.options.map_config);
 
       // hack to make leaflet use a particular location to look for images
-      L.Icon.Default.imagePath = this.options.site_url + 'js/vendor/leaflet/images';
+      L.Icon.Default.imagePath = this.options.site_url + 'js/vendor/leaflet/dist/images';
 
       jQuery.getJSON(preload_resource['url']).done(
         function(data){

@@ -123,6 +123,9 @@ class OLGeoView(GeoViewBase):
             format_lower = self._guess_format_from_extension(
                 data_dict['resource']['url'])
 
+        if not format_lower:
+            return False
+
         view_formats = config.get('ckanext.geoview.ol_viewer.formats', '')
         if view_formats:
             view_formats.split(' ')
