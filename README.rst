@@ -122,7 +122,11 @@ are passed to the JavaScript module, where they are accessible on the `options.o
 Other available configuration options are:
 
  * `ckanext.geoview.ol_viewer.hide_overlays`: if set to True, overlays won't be visible by default (only the base layer)
+ * `ckanext.geoview.ol_viewer.default_feature_hoveron`: if set to True, feature data popup will be displayed when hovering on
 
+
+Each instance of a view has the following configuration options that can override the global configuration :
+ * `feature_hoveron`: if set to True, feature data popup will be displayed when hovering on
 
 Leaflet GeoJSON Viewer
 ----------------------
