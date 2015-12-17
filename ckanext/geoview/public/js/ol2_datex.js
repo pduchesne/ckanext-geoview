@@ -9,15 +9,18 @@
                 url: url,
                 format: new OpenLayers.Format.DATEX()
             }),
-            /*
-             styleMap: new OpenLayers.StyleMap({
-             'default': new OpenLayers.Style(
-             {
-             strokeColor: "#404040",
-             strokeWidth: 0.5
-             })
-             }),
-             */
+
+            /* use a default style with datex parking icon */
+             styleMap: new OpenLayers.StyleMap(
+                 {
+                    /* default:
+                     {*/
+                         pointRadius: 10,
+                         externalGraphic: 'http://www.datex.org/parkingsite_offstreetparking.png'
+                     /* } */
+                 }
+             )
+
         });
 
 
