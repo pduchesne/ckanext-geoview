@@ -41,13 +41,23 @@ To install ckanext-geoview on a production site:
 Development Installation
 ------------------------
 
-To install ckanext-geoview for development, activate your CKAN virtualenv and
-do::
+To install ckanext-geoview for development:
 
+1. Clone the source:
+
+    cd /usr/lib/ckan/default/src
     git clone https://github.com/ckan/ckanext-geoview.git
+
+2. Activate your CKAN virtual environment, for example::
+
+    source /usr/lib/ckan/default/bin/activate
+
+3. Install the ckanext-geoview Python package into your python virtual environment::
+
     cd ckanext-geoview
     python setup.py develop
 
+4. Continue with the main installation instructions above (step 3 onwards).
 
 -----------------
 Available plugins
@@ -122,7 +132,11 @@ are passed to the JavaScript module, where they are accessible on the `options.o
 Other available configuration options are:
 
  * `ckanext.geoview.ol_viewer.hide_overlays`: if set to True, overlays won't be visible by default (only the base layer)
+ * `ckanext.geoview.ol_viewer.default_feature_hoveron`: if set to True, feature data popup will be displayed when hovering on
 
+
+Each instance of a view has the following configuration options that can override the global configuration :
+ * `feature_hoveron`: if set to True, feature data popup will be displayed when hovering on
 
 Leaflet GeoJSON Viewer
 ----------------------
