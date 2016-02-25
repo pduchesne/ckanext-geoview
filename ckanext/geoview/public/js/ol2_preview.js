@@ -2,6 +2,14 @@
 
 (function() {
 
+    if (window.Proj4js) {
+        // add your projection definitions here
+        // definitions can be found at http://spatialreference.org/ref/epsg/{xxxx}/proj4js/
+
+        // warn : 31370 definition from spatialreference.org is wrong
+        Proj4js.defs["EPSG:31370"] = "+proj=lcc +lat_1=51.16666723333333 +lat_2=49.8333339 +lat_0=90 +lon_0=4.367486666666666 +x_0=150000.013 +y_0=5400088.438 +ellps=intl +towgs84=-106.868628,52.297783,-103.723893,0.336570,-0.456955,1.842183,-1.2747 +units=m +no_defs";
+    }
+
     var $_ = _ // keep pointer to underscore, as '_' will may be overridden by a closure variable when down the stack
 
     this.ckan.module('olpreview', function (jQuery, _) {
