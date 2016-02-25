@@ -13,6 +13,6 @@
   ],
   "dependencies": {
     "underscore": ">=1.4.2",
-    "openlayers2": "pduchesne/ol2-bower#master"
+    "openlayers2": "pduchesne/ol2-bower#2.14.hilats"
   }
 }

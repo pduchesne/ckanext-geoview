@@ -301,7 +301,7 @@
                 $_.each(candidates, function (candidate, idx) {
                     parseWFSFeatureTypeDescr(
                         url,
-                        candidate.name,
+                        candidate.prefixedName || candidate.name,
                         ver,
                         function (descr) {
                             if (descr.featureTypes) {
@@ -326,7 +326,7 @@
                                                 url: url,
                                                 featureType: candidate.name,
                                                 srsName: Mercator,
-                                                featureNS: undefined,
+                                                featureNS: candidate.featureNS,
                                                 maxFeatures: MAX_FEATURES,
                                                 geometryName: geomProps[0].name
                                             })
