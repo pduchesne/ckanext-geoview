@@ -434,7 +434,7 @@ if (proj4) {
 
                 var candidates = capas.contents.layers
                 if (layerName) candidates = candidates.filter(function (layer) {
-                    return layer.name == layerName
+                    return layer.identifier == layerName
                 })
 
                 var ver = capas.version
