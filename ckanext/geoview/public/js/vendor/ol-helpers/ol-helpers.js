@@ -1,5 +1,15 @@
 // Openlayers preview module
 
+if (proj4) {
+    window.Proj4js = {
+        Proj: function (code) {
+            return proj4(Proj4js.defs[code]);
+        },
+        defs: proj4.defs,
+        transform: proj4
+    };
+}
+
 (function() {
 
     // Establish the root object, `window` in the browser, or `global` on the server.
@@ -10,7 +20,6 @@
 
     var EPSG4326 = OL_HELPERS.EPSG4326 = new OpenLayers.Projection("EPSG:4326")
     var Mercator = OL_HELPERS.Mercator = new OpenLayers.Projection("EPSG:3857")
-    var CRS84 = OL_HELPERS.CRS84 = new OpenLayers.Projection("urn:x-ogc:def:crs:EPSG:4326")
 
     var MAX_FEATURES = 300
 
@@ -68,6 +77,17 @@
                     this.mlDescr.llbbox &&
                     new OpenLayers.Bounds(this.mlDescr.llbbox).transform(EPSG4326, this.map.getProjectionObject()))
                     || OpenLayers.Layer.WMS.prototype.getDataExtent.call(this, arguments)
+            }
+        }
+    )
+
+    OpenLayers.Layer.WMTSLayer = OpenLayers.Class(OpenLayers.Layer.WMTS,
+        {
+            getDataExtent: function () {
+                return (this.mlDescr &&
+                    this.mlDescr.bounds &&
+                    this.mlDescr.bounds.transform(EPSG4326, this.map.getProjectionObject()))
+                    || OpenLayers.Layer.WMTS.prototype.getDataExtent.call(this, arguments)
             }
         }
     )
@@ -204,7 +224,7 @@
         });
     }
 
-    var parseWMTSCapas = function (url, callback, failCallback) {
+    OL_HELPERS.parseWMTSCapas = function (url, callback, failCallback) {
         var wmtsFormat = new OpenLayers.Format.WMTSCapabilities();
 
         OpenLayers.Request.GET({
@@ -404,6 +424,43 @@
         )
 
     }
+
+
+    OL_HELPERS.withWMTSLayers = function (capaUrl, layerProcessor, layerName) {
+
+        OL_HELPERS.parseWMTSCapas(
+            capaUrl,
+            function (capas) {
+
+                var candidates = capas.contents.layers
+                if (layerName) candidates = candidates.filter(function (layer) {
+                    return layer.name == layerName
+                })
+
+                var ver = capas.version
+
+                $_.each(candidates, function (candidate, idx) {
+                    var mapLayer = new OpenLayers.Format.WMTSCapabilities().createLayer(
+                        capas,
+                        {
+                            mlDescr: candidate,
+                            name: candidate.title,
+                            layer: candidate.identifier,
+                            //format: "image/png",  // TODO take format from layer descriptor
+                            isBaseLayer: false
+                        }
+                    );
+
+                    mapLayer.getDataExtent = OpenLayers.Layer.WMTSLayer.prototype.getDataExtent
+
+                    layerProcessor(mapLayer)
+                })
+
+            }
+        )
+
+    }
+
 
     OL_HELPERS.createGeoJSONLayer = function (url) {
 
