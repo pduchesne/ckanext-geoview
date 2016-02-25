@@ -364,6 +364,24 @@
                 var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(OL_HELPERS.EPSG4326, this.map.getProjectionObject()));
                 if (bbox) this.map.zoomToExtent(bbox);
 
+                var $map = this.map;
+                var mapChangeListener = function() {
+                    var newBbox = $map.getExtent() && $map.getExtent().transform($map.getProjectionObject(), OL_HELPERS.EPSG4326).toString()
+
+                    if (newBbox) {
+                        var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
+                        fragMap['bbox'] = newBbox;
+
+                        (window.parent || window).location.hash = OL_HELPERS.kvp2string(fragMap)
+                    }
+                }
+
+                // listen to bbox changes to update URL fragment
+                this.map.events.register("moveend", this.map, mapChangeListener);
+
+                this.map.events.register("zoomend", this.map, mapChangeListener);
+
+
                 var proxyUrl = this.options.proxy_url;
                 var proxyServiceUrl = this.options.proxy_service_url;
 

@@ -6550,7 +6550,7 @@ OpenLayers.Projection = OpenLayers.Class({
      * {String} The SRS code.
      */
     getCode: function() {
-        return this.proj ? this.proj.srsCode : this.projCode;
+        return this.proj && this.proj.srsCode ? this.proj.srsCode : this.projCode;
     },
    
     /**
