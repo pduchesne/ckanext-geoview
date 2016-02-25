@@ -10,13 +10,13 @@
   ],
   "ignore": [],
   "homepage": "https://github.com/pduchesne/ol2-bower",
-  "_release": "88a856d155",
+  "_release": "4d245c1ffa",
   "_resolution": {
     "type": "branch",
-    "branch": "master",
-    "commit": "88a856d155730eafb7eb13058df5a36b364d1f04"
+    "branch": "2.14.hilats",
+    "commit": "4d245c1ffa390ae40fda54ebfe0669ceae9b1113"
   },
   "_source": "git://github.com/pduchesne/ol2-bower.git",
-  "_target": "master",
+  "_target": "2.14.hilats",
   "_originalSource": "pduchesne/ol2-bower"
 }
