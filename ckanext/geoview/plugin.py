@@ -21,7 +21,7 @@ boolean_validator = p.toolkit.get_validator('boolean_validator')
 log = getLogger(__name__)
 
 GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'esrigeojson',
-                   'gft', 'arcgis_rest']
+                   'gft', 'arcgis_rest', 'wmts']
 
 
 def get_proxified_service_url(data_dict):

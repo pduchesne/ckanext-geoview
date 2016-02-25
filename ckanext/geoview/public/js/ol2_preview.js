@@ -2,6 +2,12 @@
 
 (function() {
 
+    if (window.Proj4js) {
+        // add your projection definitions here
+        // definitions can be found at http://spatialreference.org/ref/epsg/{xxxx}/proj4js/
+        Proj4js.defs["EPSG:31370"] = "+proj=lcc +lat_1=51.16666723333333 +lat_2=49.8333339 +lat_0=90 +lon_0=4.367486666666666 +x_0=150000.013 +y_0=5400088.438 +ellps=intl +towgs84=106.869,-52.2978,103.724,-0.33657,0.456955,-1.84218,1 +units=m +no_defs";
+    }
+
     var $_ = _ // keep pointer to underscore, as '_' will may be overridden by a closure variable when down the stack
 
     this.ckan.module('olpreview', function (jQuery, _) {
@@ -145,6 +151,14 @@
                 var layerName = parsedUrl.length > 1 && parsedUrl[1];
                 OL_HELPERS.withWMSLayers(url, getMapUrl, layerProcessor, layerName, true /* useTiling*/ );
             },
+            'wmts' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+                var parsedUrl = resource.url.split('#');
+
+                var url = proxyServiceUrl || parsedUrl[0];
+
+                var layerName = parsedUrl.length > 1 && parsedUrl[1];
+                OL_HELPERS.withWMTSLayers(url, layerProcessor, layerName);
+            },
             'esrigeojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
                 var url = proxyUrl || resource.url;
                 layerProcessor(OL_HELPERS.createEsriGeoJSONLayer(url));
@@ -219,7 +233,7 @@
 
             },
 
-            _commonBaseLayer: function(mapConfig) {
+            _commonBaseLayer: function(mapConfig, callback, module) {
                 /*
                 Return an OpenLayers base layer to be used depending on CKAN wide settings
 
@@ -227,7 +241,6 @@
 
                 */
 
-                var baseMapLayer;
                 var urls;
                 var attribution;
 
@@ -245,11 +258,13 @@
                                 '//d.tiles.mapbox.com/v4/' + mapConfig['mapbox.map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['mapbox.access_token'],
                     ];
                     attribution = '<a href="https://www.mapbox.com/about/maps/" target="_blank">&copy; Mapbox &copy; OpenStreetMap </a> <a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a>';
-                    baseMapLayer = new OpenLayers.Layer.XYZ('MapBox', urls, {
+                    var baseMapLayer = new OpenLayers.Layer.XYZ('MapBox', urls, {
                         sphericalMercator: true,
                         wrapDateLine: true,
                         attribution: attribution
                     });
+
+                    callback (baseMapLayer);
                 } else if (mapConfig.type == 'custom') {
                     // Custom XYZ layer
                     urls = mapConfig['custom.url'];
@@ -258,11 +273,50 @@
                     if (urls.indexOf('${x}') === -1) {
                       urls = urls.replace('{x}', '${x}').replace('{y}', '${y}').replace('{z}', '${z}');
                     }
-                    baseMapLayer = new OpenLayers.Layer.XYZ('Base Layer', urls, {
+                    var baseMapLayer = new OpenLayers.Layer.XYZ('Base Layer', urls, {
                         sphericalMercator: true,
                         wrapDateLine: true,
                         attribution: mapConfig.attribution
                     });
+
+                    callback (baseMapLayer);
+                }  else if (mapConfig.type == 'wmts') {
+
+                    OL_HELPERS.withWMTSLayers(
+                        '/basemap_service/wmts',
+                        function(layer) {
+                            layer.isBaseLayer = true
+                            layer.options.attribution = mapConfig.attribution
+                            layer.maxExtent = layer.mlDescr.bounds.transform(OL_HELPERS.EPSG4326, layer.projection)
+
+                            callback (layer);
+                        },
+                        mapConfig['wmts.layer']
+                    )
+
+                } else if (mapConfig.type == 'wms') {
+                    urls = mapConfig['wms.url'];
+                    if (!urls)
+                        throw '[CKAN Map Widgets] WMS URL must be set when using WMS Map type';
+
+                    var baseMapLayer = new OpenLayers.Layer.WMSLayer(
+                        mapConfig['wms.layer'],
+                        urls,
+                        {layers: mapConfig['wms.layer'],
+                            transparent: true},
+                        {
+                            title: 'Base Layer',
+                            isBaseLayer: true,
+                            singleTile: true,
+                            visibility: true,
+                            projection: mapConfig['wms.srs'] ? new OpenLayers.Projection(mapConfig['wms.srs']) : OL_HELPERS.Mercator, // force SRS to 3857 if using OSM baselayer
+                            ratio: 1,
+                            maxExtent: mapConfig['wms.extent'] && eval(mapConfig['wms.extent'])
+                        }
+                    )
+
+                    callback (baseMapLayer);
+
                 } else {
                     // Stamen base map
                     var urls = ['//stamen-tiles-a.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
@@ -270,11 +324,13 @@
                                 '//stamen-tiles-c.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
                                 '//stamen-tiles-d.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png'];
                     var attribution = 'Map tiles by <a href="http://stamen.com">Stamen Design</a> (<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>). Data by <a href="http://openstreetmap.org">OpenStreetMap</a> (<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>)';
-                    baseMapLayer = new OpenLayers.Layer.OSM('Base Map', urls, {
+                    var baseMapLayer = new OpenLayers.Layer.OSM('Base Map', urls, {
                       attribution: attribution});
+
+                    callback (baseMapLayer);
                 }
 
-                return baseMapLayer;
+
 
             },
 
@@ -289,8 +345,6 @@
 
                 ckan.geoview.gapi_key = this.options.gapi_key;
 
-                // Choose base map based on CKAN wide config
-                var baseMapLayer = this._commonBaseLayer(this.options.map_config);
                 var clearBaseLayer = new OpenLayers.Layer.OSM("None", this.options.site_url + "img/blank.gif", {isBaseLayer: true, attribution: ''});
 
                 var mapDiv = $("<div></div>").attr("id", "map").addClass("map")
@@ -308,72 +362,79 @@
                 });
 
                 var eventListeners
-                if ( (ckan.geoview && 'feature_hoveron' in ckan.geoview) ? ckan.geoview['feature_hoveron'] : this.options.ol_config.default_feature_hoveron)
+                if ((ckan.geoview && 'feature_hoveron' in ckan.geoview) ? ckan.geoview['feature_hoveron'] : this.options.ol_config.default_feature_hoveron)
                     eventListeners = {
-                    featureover: function (e) {
-                        e.feature.renderIntent = "select";
-                        e.feature.layer.drawFeature(e.feature);
-                        var pixel = event.xy
-                        info.css({
-                            left: (pixel.x + 10) + 'px',
-                            top: (pixel.y - 15) + 'px'
-                        });
-                        info.currentFeature = e.feature
-                        info.tooltip('hide')
-                            .empty()
-                        var tooltip = "<div>" + (e.feature.data.name || e.feature.fid) + "</div><table>";
-                        for (var prop in e.feature.data) tooltip += "<tr><td>" + prop + "</td><td>" + e.feature.data[prop] + "</td></tr></div>"
-                        tooltip += "</table>"
-                        info.attr('data-original-title', tooltip)
-                            .tooltip('fixTitle')
-                            .tooltip('show');
-                    },
-                    featureout: function (e) {
-                        e.feature.renderIntent = "default"
-                        e.feature.layer.drawFeature(e.feature)
-                        if (info.currentFeature == e.feature) {
+                        featureover: function (e) {
+                            e.feature.renderIntent = "select";
+                            e.feature.layer.drawFeature(e.feature);
+                            var pixel = event.xy
+                            info.css({
+                                left: (pixel.x + 10) + 'px',
+                                top: (pixel.y - 15) + 'px'
+                            });
+                            info.currentFeature = e.feature
                             info.tooltip('hide')
-                            info.currentFeature = undefined
-                        }
+                                .empty()
+                            var tooltip = "<div>" + (e.feature.data.name || e.feature.fid) + "</div><table>";
+                            for (var prop in e.feature.data) tooltip += "<tr><td>" + prop + "</td><td>" + e.feature.data[prop] + "</td></tr></div>"
+                            tooltip += "</table>"
+                            info.attr('data-original-title', tooltip)
+                                .tooltip('fixTitle')
+                                .tooltip('show');
+                        },
+                        featureout: function (e) {
+                            e.feature.renderIntent = "default"
+                            e.feature.layer.drawFeature(e.feature)
+                            if (info.currentFeature == e.feature) {
+                                info.tooltip('hide')
+                                info.currentFeature = undefined
+                            }
 
-                    },
-                    featureclick: function (e) {
-                        //log("Map says: " + e.feature.id + " clicked on " + e.feature.layer.name);
+                        },
+                        featureclick: function (e) {
+                            //log("Map says: " + e.feature.id + " clicked on " + e.feature.layer.name);
+                        }
                     }
-                }
 
                 OpenLayers.ImgPath = this.options.site_url + 'js/vendor/openlayers2/img/';
 
-                this.map = new OpenLayers.Map(
-                    {
-                        div: "map",
-                        theme: this.options.site_url + "js/vendor/openlayers2/theme/default/style.css",
-                        layers: [baseMapLayer, clearBaseLayer],
-                        maxExtent: baseMapLayer.getMaxExtent(),
-                        eventListeners: eventListeners
-                        //projection: OL_HELPERS.Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
-                    });
 
-                layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher()
+                var createMapFun = function(baseMapLayer) {
 
-                this.map.addControl(layerSwitcher);
+                    this.map = new OpenLayers.Map(
+                        {
+                            div: "map",
+                            theme: this.options.site_url + "js/vendor/openlayers2/theme/default/style.css",
+                            layers: [baseMapLayer, clearBaseLayer],
+                            maxExtent: baseMapLayer.getMaxExtent(),
+                            eventListeners: eventListeners
+                            //projection: OL_HELPERS.Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
+                        });
 
-                var bboxFrag;
-                var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
+                    layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher()
 
-                var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(OL_HELPERS.EPSG4326, this.map.getProjectionObject()));
-                if (bbox) this.map.zoomToExtent(bbox);
+                    this.map.addControl(layerSwitcher);
 
-                var proxyUrl = this.options.proxy_url;
-                var proxyServiceUrl = this.options.proxy_service_url;
+                    var bboxFrag;
+                    var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
 
-                ckan.geoview.googleApiKey = this.options.gapi_key;
+                    var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(OL_HELPERS.EPSG4326, this.map.getProjectionObject()));
+                    if (bbox) this.map.zoomToExtent(bbox);
+
+                    var proxyUrl = this.options.proxy_url;
+                    var proxyServiceUrl = this.options.proxy_service_url;
+
+                    ckan.geoview.googleApiKey = this.options.gapi_key;
 
 
-                withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this));
+                    withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this));
 
-                // Expand layer switcher by default
-                layerSwitcher.maximizeControl();
+                    // Expand layer switcher by default
+                    layerSwitcher.maximizeControl();
+                }
+
+                // Choose base map based on CKAN wide config
+                this._commonBaseLayer(this.options.map_config, $_.bind(createMapFun, this), this);
 
             }
         }
