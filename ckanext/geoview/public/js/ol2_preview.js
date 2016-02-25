@@ -253,6 +253,8 @@
                 } else if (mapConfig.type == 'custom') {
                     // Custom XYZ layer
                     urls = mapConfig['custom.url'];
+                    if (!urls)
+                        throw '[CKAN Map Widgets] Custom URL must be set when using Custom Map type';
                     if (urls.indexOf('${x}') === -1) {
                       urls = urls.replace('{x}', '${x}').replace('{y}', '${y}').replace('{z}', '${z}');
                     }
@@ -283,7 +285,7 @@
                 var proxyServiceUrl = this.options.proxy_service_url;
 
                 if (this.options.resourceView)
-                    $_.extend(ckan.geoview, JSON.parse(this.options.resourceView))
+                    $_.extend(ckan.geoview, this.options.resourceView);
 
                 ckan.geoview.gapi_key = this.options.gapi_key;
 

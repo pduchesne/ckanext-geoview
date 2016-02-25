@@ -1,7 +1,7 @@
 {% extends "dataviewer/base.html" %}
 
 {% block page %}
-    {% set map_config = h.get_common_map_config_wmts() %}
+    {% set map_config = h.get_common_map_config_wmts(resource_view) %}
     <div data-module="wmtspreview" id="data-preview" data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}" data-module-map_config="{{ h.dump_json(map_config) }}">
         <h4 class="loading-dialog">
           <div class="loading-spinner"></div>
