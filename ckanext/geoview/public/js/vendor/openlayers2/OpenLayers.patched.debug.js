@@ -30430,8 +30430,8 @@ OpenLayers.Layer.Google = OpenLayers.Class(
     
     /**
      * APIProperty: useTiltImages
-     * {Boolean} Should Google use 45° (tilt) imagery when available or 
-     *     should it stick to the 0° overhead view? While tilt images look
+     * {Boolean} Should Google use 45ï¿½ (tilt) imagery when available or 
+     *     should it stick to the 0ï¿½ overhead view? While tilt images look
      *     impressive, the changed viewing angle can cause the misalignment
      *     of overlay layers.
      */
@@ -39856,8 +39856,13 @@ OpenLayers.Format.WFSDescribeFeatureType = OpenLayers.Class(
                     obj.elements.push(element);
                     this.readChildNodes(node, element);
                 }
-                
-                if(obj.complexTypes) {
+
+                if (node.hasChildNodes('complexType')) {
+                    if (!obj.complexTypes) obj.complexTypes = []
+                    this.readChildNodes(node, node.getElementsByTagName('complexType'));
+                }
+
+                if(obj.complexTypes && obj.complexTypes.length > 0) {
                     type = node.getAttribute("type");
                     var localType = type.split(":").pop();
                     obj.customTypes[localType] = {
