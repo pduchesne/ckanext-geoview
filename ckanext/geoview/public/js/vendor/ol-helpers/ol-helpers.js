@@ -204,6 +204,30 @@
         });
     }
 
+    var parseWMTSCapas = function (url, callback, failCallback) {
+        var wmtsFormat = new OpenLayers.Format.WMTSCapabilities();
+
+        OpenLayers.Request.GET({
+            url: url,
+            params: {
+                SERVICE: "WMTS",
+                REQUEST: "GetCapabilities"
+            },
+            success: function (request) {
+                var doc = request.responseXML;
+                if (!doc || !doc.documentElement) {
+                    doc = request.responseText;
+                }
+                var capabilities = wmtsFormat.read(doc)
+                callback(capabilities)
+            },
+            failure: failCallback || function () {
+                alert("Trouble getting capabilities doc");
+                OpenLayers.Console.error.apply(OpenLayers.Console, arguments);
+            }
+        });
+    }
+
     OL_HELPERS.createKMLLayer = function (url) {
 
         var kml = new OpenLayers.Layer.Vector("KML", {
