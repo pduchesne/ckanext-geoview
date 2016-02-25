@@ -231,7 +231,8 @@ if (proj4) {
             url: url,
             params: {
                 SERVICE: "WMTS",
-                REQUEST: "GetCapabilities"
+                REQUEST: "GetCapabilities",
+                VERSION: "1.0.0"
             },
             success: function (request) {
                 var doc = request.responseXML;
@@ -328,7 +329,7 @@ if (proj4) {
         return gml
     }
 
-    OL_HELPERS.withFeatureTypesLayers = function (url, layerProcessor, ftName) {
+    OL_HELPERS.withFeatureTypesLayers = function (url, layerProcessor, ftName, map, useGET) {
 
         parseWFSCapas(
             url,
@@ -345,7 +346,7 @@ if (proj4) {
                 $_.each(candidates, function (candidate, idx) {
                     parseWFSFeatureTypeDescr(
                         url,
-                        candidate.prefixedName || candidate.name,
+                            candidate.prefixedName || candidate.name,
                         ver,
                         function (descr) {
                             if (descr.featureTypes) {
@@ -356,25 +357,57 @@ if (proj4) {
                                 // ignore feature types with no gml prop. Correct ?
                                 if (geomProps && geomProps.length > 0) {
 
-                                    var ftLayer = new OpenLayers.Layer.WFSLayer(
-                                        candidate.name, {
-                                            //style: default_style,
+                                    var ftLayer
+
+                                    if (useGET) {
+                                        var wfs_options = {
+                                            url: url,
+                                            params: {
+                                                request: "GetFeature",
+                                                service: "WFS",
+                                                version: ver,
+                                                typeName: candidate.prefixedName || candidate.name,
+                                                maxFeatures: MAX_FEATURES,
+                                                srsName: map ? map.getProjectionObject() : Mercator,
+                                                outputFormat: "gml2"
+                                            },
+                                            format: new OpenLayers.Format.GML({
+                                                featureNS: candidate.featureNS,
+                                                geometryName: geomProps[0].name
+                                            }),
+                                            srsInBBOX : true
+                                        }
+
+                                        ftLayer = new OpenLayers.Layer.Vector('WFS', {
                                             ftDescr: candidate,
                                             title: candidate.title,
                                             strategies: [new OpenLayers.Strategy.BBOXWithMax({maxFeatures: MAX_FEATURES, ratio: 1})],
-                                            projection: Mercator,
+                                            projection: map ? map.getProjectionObject() : Mercator,
                                             visibility: idx == 0,
-                                            protocol: new OpenLayers.Protocol.WFS({
-                                                headers: {"Content-Type": "application/xml; charset=UTF-8"}, // (failed) attempt at dealing with accentuated chars in some feature types
-                                                version: ver,
-                                                url: url,
-                                                featureType: candidate.name,
-                                                srsName: Mercator,
-                                                featureNS: candidate.featureNS,
-                                                maxFeatures: MAX_FEATURES,
-                                                geometryName: geomProps[0].name
+                                            protocol: new OpenLayers.Protocol.HTTP(wfs_options)
+                                        });
+                                        ftLayer.getDataExtent = OpenLayers.Layer.WFSLayer.prototype.getDataExtent
+                                    } else {
+                                        ftLayer = new OpenLayers.Layer.WFSLayer(
+                                            candidate.name, {
+                                                //style: default_style,
+                                                ftDescr: candidate,
+                                                title: candidate.title,
+                                                strategies: [new OpenLayers.Strategy.BBOXWithMax({maxFeatures: MAX_FEATURES, ratio: 1})],
+                                                projection: map ? map.getProjectionObject() : Mercator,
+                                                visibility: idx == 0,
+                                                protocol: new OpenLayers.Protocol.WFS({
+                                                    headers: {"Content-Type": "application/xml; charset=UTF-8"}, // (failed) attempt at dealing with accentuated chars in some feature types
+                                                    version: ver,
+                                                    url: url,
+                                                    featureType: candidate.name,
+                                                    srsName: map ? map.getProjectionObject() : Mercator,
+                                                    featureNS: candidate.featureNS,
+                                                    maxFeatures: MAX_FEATURES,
+                                                    geometryName: geomProps[0].name
+                                                })
                                             })
-                                        })
+                                    }
 
                                     layerProcessor(ftLayer)
                                 }
@@ -426,7 +459,7 @@ if (proj4) {
     }
 
 
-    OL_HELPERS.withWMTSLayers = function (capaUrl, layerProcessor, layerName) {
+    OL_HELPERS.withWMTSLayers = function (capaUrl, layerProcessor, layerName, projection) {
 
         OL_HELPERS.parseWMTSCapas(
             capaUrl,
@@ -447,7 +480,8 @@ if (proj4) {
                             name: candidate.title,
                             layer: candidate.identifier,
                             //format: "image/png",  // TODO take format from layer descriptor
-                            isBaseLayer: false
+                            isBaseLayer: false,
+                            projection : projection
                         }
                     );
 
