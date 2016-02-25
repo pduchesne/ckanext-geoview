@@ -51,6 +51,9 @@
       } else if (mapConfig.type == 'custom') {
           // Custom XYZ layer
           baseLayerUrl = mapConfig['custom.url'];
+          if (!baseLayerUrl)
+              throw '[CKAN Map Widgets] Custom URL must be set when using Custom Map type';
+
           if (mapConfig.subdomains) leafletBaseLayerOptions.subdomains = mapConfig.subdomains;
           if (mapConfig.tms) leafletBaseLayerOptions.tms = mapConfig.tms;
           leafletBaseLayerOptions.attribution = mapConfig.attribution;

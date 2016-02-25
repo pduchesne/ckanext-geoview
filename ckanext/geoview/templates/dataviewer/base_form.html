@@ -1,0 +1,8 @@
+{% import 'macros/form.html' as form %}
+
+{% block form %}
+
+{{ form.select('common_map.type', label=_('Map Type'), options=[{'text':'Default (OSM)', 'value':''},{'text':'Custom', 'value': 'custom'},{'text':'MapBox', 'value': 'mapbox'}], selected=data['common_map.type'], error=errors['common_map.type']) }}
+{{ form.input('common_map.custom.url', label=_('Custom URL'), value=data['common_map.custom.url'], error=errors['common_map.custom.url']) }}
+
+{% endblock %}
