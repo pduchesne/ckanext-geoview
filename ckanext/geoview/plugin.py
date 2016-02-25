@@ -105,6 +105,10 @@ class OLGeoView(GeoViewBase):
         m.connect('/dataset/{id}/resource/{resource_id}/service_proxy',
                   controller=controller,
                   action='proxy_service')
+
+        m.connect('/basemap_service/{map_id}',
+                  controller=controller,
+                  action='proxy_service_url')
         return m
 
     # ITemplateHelpers
