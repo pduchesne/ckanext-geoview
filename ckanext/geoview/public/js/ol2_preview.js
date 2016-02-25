@@ -122,26 +122,26 @@
 
         ckan.geoview.layerExtractors = {
 
-            'kml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'kml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var url = proxyUrl || resource.url;
                 layerProcessor(OL_HELPERS.createKMLLayer(url));
             },
-            'gml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'gml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var url = proxyUrl || resource.url;
                 layerProcessor(OL_HELPERS.createGMLLayer(url));
             },
-            'geojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'geojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var url = proxyUrl || resource.url;
                 layerProcessor(OL_HELPERS.createGeoJSONLayer(url));
             },
-            'wfs': function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'wfs': function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var parsedUrl = resource.url.split('#');
                 var url = proxyServiceUrl || parsedUrl[0];
 
                 var ftName = parsedUrl.length > 1 && parsedUrl[1];
-                OL_HELPERS.withFeatureTypesLayers(url, layerProcessor, ftName);
+                OL_HELPERS.withFeatureTypesLayers(url, layerProcessor, ftName, map, true /* useGET */);
             },
-            'wms' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'wms' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var parsedUrl = resource.url.split('#');
                 // use the original URL for the getMap, as there's no need for a proxy for image requests
                 var getMapUrl = parsedUrl[0];
@@ -151,7 +151,7 @@
                 var layerName = parsedUrl.length > 1 && parsedUrl[1];
                 OL_HELPERS.withWMSLayers(url, getMapUrl, layerProcessor, layerName, true /* useTiling*/ );
             },
-            'wmts' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'wmts' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var parsedUrl = resource.url.split('#');
 
                 var url = proxyServiceUrl || parsedUrl[0];
@@ -159,11 +159,11 @@
                 var layerName = parsedUrl.length > 1 && parsedUrl[1];
                 OL_HELPERS.withWMTSLayers(url, layerProcessor, layerName);
             },
-            'esrigeojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'esrigeojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var url = proxyUrl || resource.url;
                 layerProcessor(OL_HELPERS.createEsriGeoJSONLayer(url));
             },
-            'arcgis_rest': function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'arcgis_rest': function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var parsedUrl = resource.url.split('#');
                 var url = proxyServiceUrl || parsedUrl[0];
 
@@ -171,16 +171,16 @@
 
                 OL_HELPERS.withArcGisLayers(url, layerProcessor, layerName, parsedUrl[0]);
             },
-            'gft': function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+            'gft': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var tableId = OL_HELPERS.parseURL(resource.url).query.docid;
                 layerProcessor(OL_HELPERS.createGFTLayer(tableId, ckan.geoview.gapi_key));
             }
         }
 
-        var withLayers = function (resource, proxyUrl, proxyServiceUrl, layerProcessor) {
+        var withLayers = function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
 
             var withLayers = ckan.geoview.layerExtractors[resource.format && resource.format.toLocaleLowerCase()];
-            withLayers && withLayers(resource, proxyUrl, proxyServiceUrl, layerProcessor);
+            withLayers && withLayers(resource, proxyUrl, proxyServiceUrl, layerProcessor, map);
         }
 
         return {
@@ -265,7 +265,28 @@
                     });
 
                     callback (baseMapLayer);
-                } else if (mapConfig.type == 'custom') {
+                } else if (mapConfig.type == 'tms') {
+                    // Custom XYZ layer
+                    urls = mapConfig['tms.url'];
+                    if (!urls)
+                        throw '[CKAN Map Widgets] TMS URL must be set when using TMS Map type';
+                    var projection = mapConfig['tms.srs'] ? new OpenLayers.Projection(mapConfig['tms.srs']) : OL_HELPERS.Mercator // force SRS to 3857 if using OSM baselayer
+
+                    var baseMapLayer = new OpenLayers.Layer.TMS('Base Layer', urls, {
+                        //wrapDateLine: true,
+                        projection: projection,
+                        maxExtent: mapConfig['tms.extent'] && eval(mapConfig['tms.extent']),
+                        attribution: mapConfig.attribution,
+                        //tileOrigin: new OpenLayers.LonLat(16478.0,19244.0),
+                        //units:"m",
+                        layername:mapConfig['tms.layername'],
+                        type:'png',
+                        resolutions: mapConfig['tms.resolutions'] && eval(mapConfig['tms.resolutions']),
+                        //zoomOffset: 5
+                    });
+
+                    callback (baseMapLayer);
+                }  else if (mapConfig.type == 'custom') {
                     // Custom XYZ layer
                     urls = mapConfig['custom.url'];
                     if (!urls)
@@ -291,7 +312,8 @@
 
                             callback (layer);
                         },
-                        mapConfig['wmts.layer']
+                        mapConfig['wmts.layer'],
+                        mapConfig['wmts.srs']
                     )
 
                 } else if (mapConfig.type == 'wms') {
@@ -427,7 +449,7 @@
                     ckan.geoview.googleApiKey = this.options.gapi_key;
 
 
-                    withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this));
+                    withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this), this.map);
 
                     // Expand layer switcher by default
                     layerSwitcher.maximizeControl();
