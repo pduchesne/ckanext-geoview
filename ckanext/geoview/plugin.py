@@ -118,15 +118,17 @@ class OLGeoView(GeoViewBase):
     # IResourceView (CKAN >=2.3)
 
     def info(self):
+        s = self.schema().copy()
+        s.update({
+            'feature_hoveron': [ignore_empty, boolean_validator],
+            'feature_style': [ignore_empty]
+        })
         return {'name': 'geo_view',
                 'title': 'Map viewer (OpenLayers)',
                 'icon': 'globe',
                 'iframed': True,
                 'default_title': p.toolkit._('Map viewer'),
-                'schema': self.schema().update({
-                    'feature_hoveron': [ignore_empty, boolean_validator],
-                    'feature_style': [ignore_empty]
-                })
+                'schema': s
                }
 
     def can_view(self, data_dict):
