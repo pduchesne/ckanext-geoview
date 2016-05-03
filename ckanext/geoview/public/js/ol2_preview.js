@@ -138,7 +138,7 @@
             'wms' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
                 var parsedUrl = resource.url.split('#');
                 // use the original URL for the getMap, as there's no need for a proxy for image requests
-                var getMapUrl = parsedUrl[0].split('?')[0]; // remove query if any
+                var getMapUrl = parsedUrl[0];
 
                 var url = proxyServiceUrl || getMapUrl;
 
