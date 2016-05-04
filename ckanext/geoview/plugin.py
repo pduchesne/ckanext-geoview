@@ -131,7 +131,7 @@ class OLGeoView(GeoViewBase):
 
         view_formats = config.get('ckanext.geoview.ol_viewer.formats', '')
         if view_formats:
-            view_formats.split(' ')
+            view_formats = view_formats.split(' ')
         else:
             view_formats = GEOVIEW_FORMATS
 
