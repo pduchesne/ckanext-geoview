@@ -232,7 +232,7 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         var matchingNodes = this.getElementsByTagNameNS(node, this.datexns, elementName)
         if (matchingNodes.length > 0)
             //TODO use language filter
-            return matchingNodes[0].firstChild.firstChild.textContent
+            return matchingNodes[0].children[0].children[0].textContent
         else
         return
     },
