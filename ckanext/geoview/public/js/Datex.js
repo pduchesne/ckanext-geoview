@@ -143,8 +143,8 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
                 var latitude = this.getElementsByTagNameNS(pointCoordinates, this.datexns, "latitude")[0];
                 var longitude = this.getElementsByTagNameNS(pointCoordinates, this.datexns, "longitude")[0];
                 coords = [
-                    eval(latitude.textContent),
-                    eval(longitude.textContent)
+                    eval(longitude.textContent),
+                    eval(latitude.textContent)
                 ]
             }
             return new OpenLayers.Geometry.Point(coords[0], coords[1]);
