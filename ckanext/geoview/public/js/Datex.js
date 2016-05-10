@@ -139,7 +139,7 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
             // look for <datex:pointByCoordinates>
             var nodeList = this.getElementsByTagNameNS(node, this.datexns, "pointByCoordinates");
             if(nodeList.length > 0) {
-                var pointCoordinates = nodeList[0].children[0]
+                var pointCoordinates = nodeList[0].firstElementChild
                 var latitude = this.getElementsByTagNameNS(pointCoordinates, this.datexns, "latitude")[0];
                 var longitude = this.getElementsByTagNameNS(pointCoordinates, this.datexns, "longitude")[0];
                 coords = [
@@ -232,7 +232,7 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         var matchingNodes = this.getElementsByTagNameNS(node, this.datexns, elementName)
         if (matchingNodes.length > 0)
             //TODO use language filter
-            return matchingNodes[0].children[0].children[0].textContent
+            return matchingNodes[0].firstElementChild.firstElementChild.textContent
         else
         return
     },
