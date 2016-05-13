@@ -12,13 +12,23 @@
 
             /* use a default style with datex parking icon */
              styleMap: new OpenLayers.StyleMap(
-                 {
-                    /* default:
-                     {*/
+                 new OpenLayers.Style(
+                     {
                          pointRadius: 10,
-                         externalGraphic: 'http://www.datex.org/parkingsite_offstreetparking.png'
-                     /* } */
-                 }
+                         //externalGraphic: 'http://www.datex.org/parkingsite_offstreetparking.png'
+                        externalGraphic: '${getIcon}'
+                     },
+                     {context: {
+                         getIcon: function(feature) {
+                             if (feature.attributes.layout == "covered")
+                                 return '/img/F60.svg';
+                             else if (feature.attributes.layout == "openSpace")
+                                 return '/img/E9a.svg';
+                             else
+                                 return '/img/E9a.svg';
+                         }
+                     }}
+                 )
              )
 
         });

@@ -212,6 +212,9 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
 
         attributes.type = node.getAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type")
         attributes.name = this.getMultilangValue(node, 'parkingName')
+        attributes.layout = this.getTextValue(node, 'parkingLayout')
+        attributes.url = this.getTextValue(node, 'urlLinkAddress')
+        try { attributes.spacesNumber = parseInt(this.getTextValue(node, 'parkingNumberOfSpaces')) } catch (err) {}
         attributes.description = this.getMultilangValue(node, 'parkingDescription')
         attributes.address = this.getMultilangValue(node, 'contactDetailsAddress')
         attributes.phone = this.getTextValue(node, 'contactDetailsTelephoneNumber')
