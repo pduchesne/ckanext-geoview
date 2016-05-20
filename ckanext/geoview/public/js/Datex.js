@@ -220,6 +220,14 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         attributes.phone = this.getTextValue(node, 'contactDetailsTelephoneNumber')
         attributes.urbanParkingType = this.getTextValue(node, 'urbanParkingSiteType')
 
+        try {
+            attributes.parkingUsageScenario = node
+                .getElementsByTagNameNS(this.datexns, "parkingUsageScenario")
+                .getElementsByTagNameNS(this.datexns, "parkingUsageScenario")
+                .getElementsByTagNameNS(this.datexns, "parkingUsageScenario")
+                .textContent
+        } catch (err) {}
+
         return attributes;
     },
 

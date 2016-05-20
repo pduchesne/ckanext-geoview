@@ -24,6 +24,8 @@
                                  return '/img/F60.svg';
                              else if (feature.attributes.layout == "openSpace")
                                  return '/img/E9a.svg';
+                             else if (feature.attributes.parkingUsageScenario == "truckParking")
+                                 return '/img/E9c.svg';
                              else
                                  return '/img/E9a.svg';
                          }
