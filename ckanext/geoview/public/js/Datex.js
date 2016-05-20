@@ -222,9 +222,7 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
 
         try {
             attributes.parkingUsageScenario = node
-                .getElementsByTagNameNS(this.datexns, "parkingUsageScenario")
-                .getElementsByTagNameNS(this.datexns, "parkingUsageScenario")
-                .getElementsByTagNameNS(this.datexns, "parkingUsageScenario")
+                .getElementsByTagNameNS(this.datexns, "parkingUsageScenario")[2] // WARN this structure looks erroneous
                 .textContent
         } catch (err) {}
 
