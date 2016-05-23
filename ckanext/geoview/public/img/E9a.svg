@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE svg PUBLIC '-//W3C//DTD SVG 1.0//EN' 'http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd'>
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" width="400.000000002976" height="600.000000000025">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg" width="400.000000002976" height="600.000000000025" viewBox="0 0 600 600">
 <!--Gegenereerd door de SIMaD-toepassing (http://www.dlw.be).-->
 <g style="stroke:none;fill-rule:evenodd;" transform="matrix(1,0,0,-1,0,600.000000000025)">
 <path d=" M0 555 L1.26760824059602E-11 45.000033772121 A45 45 0 0 1 45.000033772121 1.26760824059602E-11 L354.999966227879 1.26760824059602E-11 A45 45 0 0 1 399.999999999987 45.000033772121 L399.999999999888 554.999899469035 A45 45 0 0 1 355.000033772121 599.999999999987 L45.000033772121 599.999999999987 A45 45 0 0 1 1.26760824059602E-11 554.999966227879 Z" style="fill:rgb(0,0,255);" />
