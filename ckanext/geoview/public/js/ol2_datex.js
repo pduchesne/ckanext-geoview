@@ -10,15 +10,31 @@
                 format: new OpenLayers.Format.DATEX()
             }),
 
+            rendererOptions: {zIndexing: true},
             /* use a default style with datex parking icon */
              styleMap: new OpenLayers.StyleMap(
                  new OpenLayers.Style(
                      {
-                         pointRadius: 10,
-                         //externalGraphic: 'http://www.datex.org/parkingsite_offstreetparking.png'
-                        externalGraphic: '${getIcon}'
+
                      },
-                     {context: {
+                     {rules:[
+                         new OpenLayers.Rule({
+                             symbolizer: {
+                                 'Polygon':{
+                                     fillColor: "yellow",
+                                     fillOpacity: 0.4,
+                                     graphicZIndex: 1,
+                                     strokeWidth: 0
+                                 },
+                                 'Point':{
+                                     pointRadius: 10,
+                                     //externalGraphic: 'http://www.datex.org/parkingsite_offstreetparking.png'
+                                     externalGraphic: '${getIcon}',
+                                     graphicZIndex: 2
+                                 }
+                             }
+                         })],
+                      context: {
                          getIcon: function(feature) {
                              if (feature.attributes.layout == "covered")
                                  return '/img/F60.svg';

@@ -37,6 +37,16 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
             trimComma: (/\s*,\s*/g)
         };
         OpenLayers.Format.XML.prototype.initialize.apply(this, [options]);
+
+        this.readers = {
+            "http://datex2.eu/schema/2/2_0#parkingSite" : this.parseParkingSiteElement
+        }
+
+        this.cardinality = {
+            "http://datex2.eu/schema/2/2_0#parkingTablePublication-http://datex2.eu/schema/2/2_0#parkingTable" : false,
+            "http://datex2.eu/schema/2/2_0#parkingTable-http://datex2.eu/schema/2/2_0#parkingRecord" : false,
+            "GroupOfParkingSites-http://datex2.eu/schema/2/2_0#parkingSite" : false
+        }
     },
 
     /**
@@ -53,18 +63,101 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         if(typeof data == "string") {
             data = OpenLayers.Format.XML.prototype.read.apply(this, [data]);
         }
-        var parkingSiteNodes = this.getElementsByTagNameNS(data.documentElement,
-            this.datexns,
-            this.parkingSiteElementName);
-        var parkingSites = [];
-        for(var i=0; i<parkingSiteNodes.length; i++) {
-            var parkingSite = this.parseParkingSiteElement(parkingSiteNodes[i]);
-            if(parkingSite) {
-                parkingSites.push(parkingSite);
-            }
+
+        var features = []
+
+        var datexObj = this.readAll(data)
+
+        if (datexObj.d2LogicalModel.payloadPublication.genericPublicationExtension) {
+            var parkingTables = datexObj.d2LogicalModel
+                .payloadPublication
+                .genericPublicationExtension
+                .parkingTablePublication
+                .parkingTable
+
+            $.each(parkingTables, function (idx, pt) {
+                $.each(pt.parkingRecord, function (idx, pr) {
+                    if (pr['@type'] == "GroupOfParkingSites")
+                        features = features.concat(pr.parkingSite)
+                    else
+                        //TODO correct ?
+                        features.push(pr)
+                })
+            })
+
+
+        } else {
+            datexObj
         }
-        return parkingSites;
+
+        return features
     },
+
+    readAll: function(dataNode) {
+        var datexDoc = {}
+
+        for (var idx=0;idx < dataNode.children.length; idx++) {
+            this.parseIntoContainer(dataNode.children[idx], datexDoc)
+        }
+
+        return datexDoc
+    },
+
+    parseIntoContainer: function(node, container, isSingleValue) {
+        var readerFunc = this.findReader(node.namespaceURI, node.localName)
+        var name = node.localName
+
+        var value = readerFunc.call(this, node)
+
+        if (isSingleValue === undefined) {
+            if (container[name])
+                if (Array.isArray(container[name]))
+                    container[name].push(value)
+                else
+                    container[name] = [container[name], value]
+            else
+                container[name] = value
+        } else if (isSingleValue) {
+            if (container[name])
+                throw "Two values for single field " + name
+            container.name = value
+        } else {
+            if (!container[name])
+                container[name] = []
+            container[name].push(value)
+        }
+    },
+
+    findReader: function(namespace, name) {
+        return this.readers[namespace+'#'+name] || this.parseGeneric
+    },
+
+    getQualifiedName: function(node) {
+        return node.namespaceURI + "#" + node.localName
+    },
+
+    parseGeneric: function(node) {
+        var obj = {}
+
+        if (node.children && node.children.length > 0) {
+            if (node.hasAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type"))
+                obj['@type'] = node.getAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type")
+
+            for (var idx=0;idx < node.children.length; idx++) {
+                var child = node.children[idx]
+                var cardinality = this.cardinality[this.getQualifiedName(node)+"-"+this.getQualifiedName(child)]
+                if (cardinality === undefined)
+                    cardinality = this.cardinality[obj['@type']+"-"+this.getQualifiedName(child)]
+                this.parseIntoContainer(child, obj, cardinality)
+            }
+        } // TODO support both children and value ?
+        else {
+            obj = node.textContent
+        }
+
+        return obj
+    },
+
 
     /**
      * Method: parseFeature
@@ -116,6 +209,15 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         return feature;
     },
 
+    parseCoordinates: function(coordinatesNode) {
+        var latitude = this.getElementsByTagNameNS(coordinatesNode, this.datexns, "latitude")[0];
+        var longitude = this.getElementsByTagNameNS(coordinatesNode, this.datexns, "longitude")[0];
+        return [
+            eval(longitude.textContent),
+            eval(latitude.textContent)
+        ]
+    },
+
     /**
      * Property: parseGeometry
      * Properties of this object are the functions that parse geometries based
@@ -139,15 +241,54 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
             // look for <datex:pointByCoordinates>
             var nodeList = this.getElementsByTagNameNS(node, this.datexns, "pointByCoordinates");
             if(nodeList.length > 0) {
-                var pointCoordinates = nodeList[0].firstElementChild
-                var latitude = this.getElementsByTagNameNS(pointCoordinates, this.datexns, "latitude")[0];
-                var longitude = this.getElementsByTagNameNS(pointCoordinates, this.datexns, "longitude")[0];
-                coords = [
-                    eval(longitude.textContent),
-                    eval(latitude.textContent)
-                ]
+                coords = this.parseCoordinates(nodeList[0].firstElementChild)
             }
             return new OpenLayers.Geometry.Point(coords[0], coords[1]);
+        },
+
+        /*
+         <parkingLocation xsi:type="Area">
+         <areaExtension>
+         <openlrExtendedArea>
+         <openlrAreaLocationReference xsi:type="OpenlrPolygonLocationReference">
+         <openlrPolygonCorners>
+         <openlrCoordinate>
+         <latitude>50.93269894776509</latitude>
+         <longitude>5.33435583114624</longitude>
+         </openlrCoordinate>
+         <openlrCoordinate>
+         <latitude>50.93421353595426</latitude>
+         <longitude>5.336952209472656</longitude>
+         </openlrCoordinate>
+         <openlrCoordinate>
+         <latitude>50.93437581033473</latitude>
+         <longitude>5.338175296783447</longitude>
+         </openlrCoordinate>
+         </openlrPolygonCorners>
+         </openlrAreaLocationReference>
+         </openlrExtendedArea>
+         </areaExtension>
+         </parkingLocation>
+         */
+
+        area: function(node) {
+            // look for <datex:pointByCoordinates>
+            var areaNode = this.getElementsByTagNameNS(node, this.datexns, "openlrAreaLocationReference")[0];
+            var areaType = areaNode.getAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type");
+            switch (areaType) {
+                case 'OpenlrPolygonLocationReference':
+                    var corners = this.getElementsByTagNameNS(areaNode, this.datexns, "openlrCoordinate");
+                    var components = [];
+                    for(var i=0; i<corners.length; ++i) {
+                        var coords = this.parseCoordinates(corners[i])
+                        components.push(new OpenLayers.Geometry.Point(coords[0], coords[1]))
+                    }
+                    return new OpenLayers.Geometry.Polygon([
+                        new OpenLayers.Geometry.LinearRing(components)]);
+                default:
+                    throw "Unsupported Area type " + areaType
+            }
+
         },
 
         /*
