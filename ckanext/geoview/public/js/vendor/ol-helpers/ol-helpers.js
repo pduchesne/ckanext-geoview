@@ -326,7 +326,7 @@
                                                 url: url,
                                                 featureType: candidate.name,
                                                 srsName: Mercator,
-                                                featureNS: undefined,
+                                                featureNS: candidate.featureNS,
                                                 maxFeatures: MAX_FEATURES,
                                                 geometryName: geomProps[0].name
                                             })
