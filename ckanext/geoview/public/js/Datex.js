@@ -49,6 +49,15 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         }
     },
 
+    getElementNodes: function(nodeColl) {
+        var filteredList = []
+        for (var idx=0;idx < nodeColl.length; idx++) {
+            if (nodeColl[idx].nodeType == 1)
+                filteredList.push(nodeColl[idx])
+        }
+        return filteredList
+    },
+
     /**
      * APIMethod: read
      * Read data from a string, and return a list of features.
@@ -96,8 +105,9 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
     readAll: function(dataNode) {
         var datexDoc = {}
 
-        for (var idx=0;idx < dataNode.children.length; idx++) {
-            this.parseIntoContainer(dataNode.children[idx], datexDoc)
+        var elemChildren = this.getElementNodes(dataNode.childNodes)
+        for (var idx=0;idx < elemChildren.length; idx++) {
+            this.parseIntoContainer(elemChildren[idx], datexDoc)
         }
 
         return datexDoc
@@ -139,12 +149,15 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
     parseGeneric: function(node) {
         var obj = {}
 
-        if (node.children && node.children.length > 0) {
+        var elemChildren = node.childNodes && this.getElementNodes(node.childNodes)
+        if (elemChildren && elemChildren.length > 0) {
             if (node.hasAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type"))
                 obj['@type'] = node.getAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type")
+            if (node.hasAttribute("id"))
+                obj['@id'] = node.getAttribute("id")
 
-            for (var idx=0;idx < node.children.length; idx++) {
-                var child = node.children[idx]
+            for (var idx=0;idx < elemChildren.length; idx++) {
+                var child = elemChildren[idx]
                 var cardinality = this.cardinality[this.getQualifiedName(node)+"-"+this.getQualifiedName(child)]
                 if (cardinality === undefined)
                     cardinality = this.cardinality[obj['@type']+"-"+this.getQualifiedName(child)]
