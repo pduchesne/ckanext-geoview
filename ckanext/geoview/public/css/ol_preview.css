@@ -18,15 +18,22 @@
  }
  .tooltip-inner {
      border: 2px solid white;
+     max-width: inherit !important;
+     width: auto !important;
  }
 
  .tooltip-inner>table {
-     font-size: 80%;
+     /*font-size: 80%; */
  }
 
  .tooltip-inner td {
      text-align: left;
      line-height: 90%;
+     padding-bottom: 3px;
+     padding-right: 3px;
+     vertical-align: top;
+
+     white-space: nowrap;
  }
 
  .tooltip-inner>div:first-child {

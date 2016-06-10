@@ -39,13 +39,15 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         OpenLayers.Format.XML.prototype.initialize.apply(this, [options]);
 
         this.readers = {
-            "http://datex2.eu/schema/2/2_0#parkingSite" : this.parseParkingSiteElement
+            "http://datex2.eu/schema/2/2_0#parkingSite" : this.parseParkingSiteElement,
+            "http://datex2.eu/schema/2/2_0#values" : this.parseValues
         }
 
         this.cardinality = {
             "http://datex2.eu/schema/2/2_0#parkingTablePublication-http://datex2.eu/schema/2/2_0#parkingTable" : false,
             "http://datex2.eu/schema/2/2_0#parkingTable-http://datex2.eu/schema/2/2_0#parkingRecord" : false,
-            "GroupOfParkingSites-http://datex2.eu/schema/2/2_0#parkingSite" : false
+            "GroupOfParkingSites-http://datex2.eu/schema/2/2_0#parkingSite" : false,
+            "GroupOfParkingSites-http://datex2.eu/schema/2/2_0#operator" : {key: "@id"}
         }
     },
 
@@ -113,13 +115,13 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         return datexDoc
     },
 
-    parseIntoContainer: function(node, container, isSingleValue) {
+    parseIntoContainer: function(node, container, valueCardinality) {
         var readerFunc = this.findReader(node.namespaceURI, node.localName)
         var name = node.localName
 
-        var value = readerFunc.call(this, node)
+        var value = readerFunc.call(this, node, container)
 
-        if (isSingleValue === undefined) {
+        if (valueCardinality === undefined) {
             if (container[name])
                 if (Array.isArray(container[name]))
                     container[name].push(value)
@@ -127,7 +129,11 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
                     container[name] = [container[name], value]
             else
                 container[name] = value
-        } else if (isSingleValue) {
+        } else if (valueCardinality && valueCardinality.key) {
+            if (!container[name])
+                container[name] = {}
+            container[name][value[valueCardinality.key]] = value
+        } else if (valueCardinality === true) {
             if (container[name])
                 throw "Two values for single field " + name
             container.name = value
@@ -150,7 +156,7 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         var obj = {}
 
         var elemChildren = node.childNodes && this.getElementNodes(node.childNodes)
-        if (elemChildren && elemChildren.length > 0) {
+        if (node.hasAttribute("id") || (elemChildren && elemChildren.length > 0)) {
             if (node.hasAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type"))
                 obj['@type'] = node.getAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type")
             if (node.hasAttribute("id"))
@@ -181,7 +187,7 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
      * Parameters:
      * node - {DOMElement} A GML feature node.
      */
-    parseParkingSiteElement: function(parkingSiteNode) {
+    parseParkingSiteElement: function(parkingSiteNode, parent) {
 
         var locationNodeList = this.getElementsByTagNameNS(parkingSiteNode, this.datexns, 'parkingLocation');
         var geometry;
@@ -204,22 +210,38 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
         var attributes;
         if(this.extractAttributes) {
             attributes = this.parseAttributes(parkingSiteNode);
+
+            attributes.lonlatPos = geometry.getCentroid().transform(this.externalProjection, new OpenLayers.Projection("EPSG:4326"))
+
+            if (attributes.original.operator) {
+                if (attributes.original.operator['@type'] == "ContactByReference" && parent && parent.operator) {
+                    attributes.operator = parent.operator[attributes.original.operator.contactReference['@id']]
+                } else {
+                    // check type ?
+                    attributes.operator = attributes.original.operator
+                }
+            }
         }
         var feature = new OpenLayers.Feature.Vector(geometry, attributes);
 
-            /*
-        var firstChild = this.getFirstElementChild(node);
-        feature.gml = {
-            featureType: firstChild.nodeName.split(":")[1],
-            featureNS: firstChild.namespaceURI,
-            featureNSPrefix: firstChild.prefix
-        };
-        feature.type = feature.gml.featureType;
-        */
 
         // assign fid
         feature.fid = parkingSiteNode.getAttribute("id");
         return feature;
+    },
+
+    parseValues: function(valuesNode, parent) {
+
+        var values = {}
+        var valueNodeList = this.getElementsByTagNameNS(valuesNode, this.datexns, 'value');
+
+        for (var idx=0;idx < valueNodeList.length;idx++) {
+            var valueNode = valueNodeList.item(idx)
+            var lang = valueNode.getAttribute("lang")
+            values[lang] = valueNode.textContent
+        }
+
+        return values;
     },
 
     parseCoordinates: function(coordinatesNode) {
@@ -357,22 +379,29 @@ OpenLayers.Format.DATEX = OpenLayers.Class(OpenLayers.Format.XML, {
      * {Object} An attributes object.
      */
     parseAttributes: function(node) {
-        var attributes = {};
+        var attributes = {
+            original: this.parseGeneric(node)
+        };
         // assume attributes are children of the first type 1 child
 
         var parentParkingRecord = node.parentNode.nodeName == "parkingRecord" && node.parentNode
         if (parentParkingRecord)
             attributes.groupName = this.getMultilangValue(parentParkingRecord, 'parkingName')
 
-        attributes.type = node.getAttributeNS("http://www.w3.org/2001/XMLSchema-instance","type")
+        attributes.type = attributes.original['@type']
         attributes.name = this.getMultilangValue(node, 'parkingName')
-        attributes.layout = this.getTextValue(node, 'parkingLayout')
-        attributes.url = this.getTextValue(node, 'urlLinkAddress')
-        try { attributes.spacesNumber = parseInt(this.getTextValue(node, 'parkingNumberOfSpaces')) } catch (err) {}
+        attributes.layout = attributes.original.parkingLayout
+        attributes.url = attributes.original.urlLinkAddress
+        try { attributes.spacesNumber = parseInt(attributes.original.parkingNumberOfSpaces) } catch (err) {}
         attributes.description = this.getMultilangValue(node, 'parkingDescription')
         attributes.address = this.getMultilangValue(node, 'contactDetailsAddress')
-        attributes.phone = this.getTextValue(node, 'contactDetailsTelephoneNumber')
-        attributes.urbanParkingType = this.getTextValue(node, 'urbanParkingSiteType')
+        attributes.phone = attributes.original.contactDetailsTelephoneNumber
+        attributes.urbanParkingType = attributes.original.urbanParkingSiteType
+
+        try {
+            attributes.vehicleHeight = attributes.original.onlyAssignedParking.vehicleCharacteristics.heightCharacteristic.vehicleHeight
+        } catch (err) {}
+
 
         try {
             attributes.parkingUsageScenario = node

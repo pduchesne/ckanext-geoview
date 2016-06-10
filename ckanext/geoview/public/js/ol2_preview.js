@@ -328,9 +328,19 @@
                         info.currentFeature = e.feature
                         info.tooltip('hide')
                             .empty()
-                        var tooltip = "<div>" + (e.feature.data.name || e.feature.fid) + "</div><table>";
-                        for (var prop in e.feature.data) tooltip += "<tr><td>" + prop + "</td><td>" + e.feature.data[prop] + "</td></tr></div>"
-                        tooltip += "</table>"
+
+                        var tooltip
+                        if (e.feature.layer.styleMap &&
+                            e.feature.layer.styleMap.styles['select'] &&
+                            e.feature.layer.styleMap.styles['select'].context &&
+                            e.feature.layer.styleMap.styles['select'].context.getTooltip)
+                            tooltip = e.feature.layer.styleMap.styles['select'].context.getTooltip(e.feature)
+                        else {
+                            tooltip = "<div>" + (e.feature.data.name || e.feature.fid) + "</div><table>";
+                            for (var prop in e.feature.data) tooltip += "<tr><td>" + prop + "</td><td>" + e.feature.data[prop] + "</td></tr></div>"
+                            tooltip += "</table>"
+                        }
+
                         info.attr('data-original-title', tooltip)
                             .tooltip('fixTitle')
                             .tooltip('show');
