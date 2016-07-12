@@ -20,6 +20,7 @@
 
 {# remove any ckan styles #}
 {% block styles %}
+    <link rel="stylesheet" href="{{ h.url_for_static('/css/bootstrap.min.css') }}" type="text/css" media="screen, projection" />
     <link rel="stylesheet" href="http://ol3js.org/en/master/build/ol.css" type="text/css" />
 {% endblock %}
 
