@@ -262,22 +262,13 @@
                         attribution: mapConfig.attribution
                     });
                 } else {
-                    // MapQuest OpenStreetMap base map
-                    if (isHttps) {
-                        var urls = ['//otile1-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile2-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile3-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile4-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
-
-                    } else {
-                        var urls = ['//otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
-                    }
-                    var attribution = mapConfig.attribution || 'Map data &copy; OpenStreetMap contributors, Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="//developer.mapquest.com/content/osm/mq_logo.png">';
-
-                    baseMapLayer = new OpenLayers.Layer.OSM('MapQuest OSM', urls, {
+                    // Stamen base map
+                    var urls = ['//stamen-tiles-a.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
+                                '//stamen-tiles-b.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
+                                '//stamen-tiles-c.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
+                                '//stamen-tiles-d.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png'];
+                    var attribution = 'Map tiles by <a href="http://stamen.com">Stamen Design</a> (<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>). Data by <a href="http://openstreetmap.org">OpenStreetMap</a> (<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>)';
+                    baseMapLayer = new OpenLayers.Layer.OSM('Base Map', urls, {
                       attribution: attribution});
                 }
 
