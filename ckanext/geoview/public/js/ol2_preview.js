@@ -138,7 +138,7 @@
             'wms' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor) {
                 var parsedUrl = resource.url.split('#');
                 // use the original URL for the getMap, as there's no need for a proxy for image requests
-                var getMapUrl = parsedUrl[0].split('?')[0]; // remove query if any
+                var getMapUrl = parsedUrl[0];
 
                 var url = proxyServiceUrl || getMapUrl;
 
@@ -264,22 +264,13 @@
                         attribution: mapConfig.attribution
                     });
                 } else {
-                    // MapQuest OpenStreetMap base map
-                    if (isHttps) {
-                        var urls = ['//otile1-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile2-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile3-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile4-s.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
-
-                    } else {
-                        var urls = ['//otile1.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile2.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile3.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png',
-                                    '//otile4.mqcdn.com/tiles/1.0.0/map/${z}/${x}/${y}.png'];
-                    }
-                    var attribution = mapConfig.attribution || 'Map data &copy; OpenStreetMap contributors, Tiles Courtesy of <a href="http://www.mapquest.com/" target="_blank">MapQuest</a> <img src="//developer.mapquest.com/content/osm/mq_logo.png">';
-
-                    baseMapLayer = new OpenLayers.Layer.OSM('MapQuest OSM', urls, {
+                    // Stamen base map
+                    var urls = ['//stamen-tiles-a.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
+                                '//stamen-tiles-b.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
+                                '//stamen-tiles-c.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
+                                '//stamen-tiles-d.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png'];
+                    var attribution = 'Map tiles by <a href="http://stamen.com">Stamen Design</a> (<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>). Data by <a href="http://openstreetmap.org">OpenStreetMap</a> (<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>)';
+                    baseMapLayer = new OpenLayers.Layer.OSM('Base Map', urls, {
                       attribution: attribution});
                 }
 
@@ -300,7 +291,7 @@
 
                 // Choose base map based on CKAN wide config
                 var baseMapLayer = this._commonBaseLayer(this.options.map_config);
-                var clearBaseLayer = new OpenLayers.Layer.OSM("None", "/img/blank.gif", {isBaseLayer: true, attribution: ''});
+                var clearBaseLayer = new OpenLayers.Layer.OSM("None", this.options.site_url + "img/blank.gif", {isBaseLayer: true, attribution: ''});
 
                 var mapDiv = $("<div></div>").attr("id", "map").addClass("map")
                 var info = $("<div></div>").attr("id", "info")
@@ -351,10 +342,12 @@
                     }
                 }
 
+                OpenLayers.ImgPath = this.options.site_url + 'js/vendor/openlayers2/img/';
+
                 this.map = new OpenLayers.Map(
                     {
                         div: "map",
-                        theme: "/js/vendor/openlayers2/theme/default/style.css",
+                        theme: this.options.site_url + "js/vendor/openlayers2/theme/default/style.css",
                         layers: [baseMapLayer, clearBaseLayer],
                         maxExtent: baseMapLayer.getMaxExtent(),
                         eventListeners: eventListeners
@@ -386,4 +379,3 @@
         }
     });
 })();
-OpenLayers.ImgPath = '/js/vendor/openlayers2/img/';

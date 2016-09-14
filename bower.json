@@ -3,7 +3,8 @@
   "version": "0.0.2",
   "dependencies": {
     "ol-helpers": "pduchesne/ol-helpers",
-    "leaflet": "~0.7.7"
+    "leaflet": "~0.7.7",
+    "proj4leaflet": "~0.7.2"
   },
   "appPath": "ckanext/geoview/public"
 }

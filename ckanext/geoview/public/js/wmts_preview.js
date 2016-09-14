@@ -16,7 +16,7 @@ ckan.module('wmtspreview', function (jQuery, _) {
 
       jQuery.get(preload_resource['url']).done(
         function(data){
-          self.showPreview(preload_resource['original_url'], data);
+          self.showPreview(data);
         })
       .fail(
         function(jqXHR, textStatus, errorThrown) {
@@ -33,28 +33,33 @@ ckan.module('wmtspreview', function (jQuery, _) {
       }
     },
 
-    showPreview: function (url, data) {
+    showPreview: function (wmtsInfo) {
       var self = this;
       var EPSG4326 = proj4('EPSG:4326');
-      var nameSpace = ($(data).find('Contents Layer > ows\\:Identifier').length != 0) ? 'ows\\:' : '';
-      var xmlPathPrefix = 'Contents Layer > ' + nameSpace;
-      var xmlMapIds = $(data).find(xmlPathPrefix + 'Identifier');
-      var xmlMapTitles = $(data).find(xmlPathPrefix + 'Title');
-      var bboxName = ($(data).find(xmlPathPrefix + 'WGS84BoundingBox').length != 0) ? 'WGS84BoundingBox' : 'BoundingBox';
-      var xmlPathPrefix2 = 'Contents Layer ows\\:' + bboxName + ' > ' + nameSpace;
-      var xmlMapLowerCorner = $(data).find(xmlPathPrefix2 + 'LowerCorner');
-      var xmlMapUpperCorner = $(data).find(xmlPathPrefix2 + 'UpperCorner');
-      var mapIds = [];
-      var mapTitles = [];
+      var xmlPathPrefix = 'Contents Layer';
+      var nameSpace = ($(wmtsInfo).find('ows\\:Identifier').length != 0) ? 'ows\\:' : '';
+      var tileUrlPrefix = $(wmtsInfo).find(nameSpace + 'Operation[name="GetTile"]').find(nameSpace + 'Get:contains("KVP")').attr('xlink:href');
+      var bboxName;
+      var mapInfos = [];
+      var tileVariables = {TileMatrixSet: '{tileMatrixSet}', TileMatrix: '{z}', Style: '{style}', TileRow: '{y}', TileCol: '{x}'};
       var maps = {};
       var mapLatLngBounds = {};
-      var xmlMapCrs, overlay;
+      var overlay;
 
+      // Ensure that URLs have http://.
+      function httpify(s) {
+        if (s != undefined) {
+          if (!s.match(/^[a-zA-Z]+:\/\//)) s = 'http://' + s;
+	}
+	return s;
+      }
+
+      // Get the layer when changing to a new layer.
       function layerChange(e) {
-	var url = e.layer._url;
 	overlay = e.layer;
       }
 
+      // Load crs from epsg.io.
       function loadEPSG(url, callback) {
         var script = document.createElement('script');
         script.src = url;
@@ -63,6 +68,7 @@ ckan.module('wmtspreview', function (jQuery, _) {
         document.getElementsByTagName('head')[0].appendChild(script);
       }
 
+      // Transform point coordinates from user coordinate system to EPSG:4326.
       function transCoord(x, y, userCrs) {
         if (proj4) {
           var p = proj4(userCrs, EPSG4326, [parseFloat(x), parseFloat(y)]);
@@ -70,19 +76,41 @@ ckan.module('wmtspreview', function (jQuery, _) {
         return [p[1], p[0]];
       }
 
-      for (var i=0, max=xmlMapIds.length; i < max; i++) {
-        mapIds.push(xmlMapIds[i].textContent);
-        mapTitles.push(xmlMapTitles[i].textContent);
+      // Try to obtain the WGS84BoundingBox or BoundingBox.
+      if ($(wmtsInfo).find(nameSpace + 'WGS84BoundingBox').length != 0) {
+        bboxName = 'WGS84BoundingBox';
+      } else if ($(wmtsInfo).find(nameSpace + 'BoundingBox').length != 0) {
+	bboxName = 'BoundingBox';
+      } else {
+        bboxName = '';
       }
 
-      for (var i=0, max=mapIds.length; i < max; i++) {
-        maps[mapTitles[i]] = L.tileLayer(url + '?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=' + mapIds[i] + '&STYLE=_null&TILEMATRIXSET=GoogleMapsCompatible&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/png');
-        mapLatLngBounds[mapIds[i]] = [xmlMapLowerCorner[i].textContent.split(' ').reverse(), xmlMapUpperCorner[i].textContent.split(' ').reverse()];
-      }
+      // Collect information for each map.
+      $(wmtsInfo).find(xmlPathPrefix).each(function(i, selectedElement) {
+        mapInfos.push({
+          'id': $(selectedElement).find(nameSpace + 'Identifier').first().text(),
+          'title': $(selectedElement).find(nameSpace + 'Title').first().text(),
+          'tileMatrixSet': $(selectedElement).find('TileMatrixSet').first().text(),
+          'style': $(selectedElement).find('Style').find(nameSpace + 'Identifier').first().text(),
+          'format': $(selectedElement).find('Format').text(),
+          'resourceUrl': httpify($(selectedElement).find('ResourceURL').attr('template')),
+          'lowerCorner': $(selectedElement).find(nameSpace + bboxName).find(nameSpace + 'LowerCorner').text().split(' ').reverse(),
+          'upperCorner': $(selectedElement).find(nameSpace + bboxName).find(nameSpace + 'UpperCorner').text().split(' ').reverse(),
+        });
+      });
+
+      // Get tiles via RESTful if the service has resourceUrls, otherwise get them via KVP.
+      jQuery.each(mapInfos, function(i, mapInfo) {
+        maps[mapInfo.title] = (mapInfo.resourceUrl != undefined) ?
+        // Discard any unsupported tile variables.
+        L.tileLayer(mapInfo.resourceUrl.replace(/{([^}]+)}/g, function(g0, g1) { return (tileVariables[g1] != undefined) ? tileVariables[g1] : ''; }), mapInfo) :
+        L.tileLayer(httpify(tileUrlPrefix) + 'SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER={id}&STYLE={style}&FORMAT={format}&TILEMATRIXSET={tileMatrixSet}&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', mapInfo);
+        mapLatLngBounds[mapInfo.id] = [mapInfo.lowerCorner, mapInfo.upperCorner];
+      });
 
       // If we only have BoundingBox info, load crs from epsg.io.
       if (bboxName == 'BoundingBox') {
-        xmlMapCrs = $(data).find(xmlPathPrefix + bboxName).first().attr("crs");
+        xmlMapCrs = $(wmtsInfo).find(xmlPathPrefix).find(nameSpace + bboxName).first().attr("crs");
         EPSG = xmlMapCrs.substring(xmlMapCrs.indexOf("EPSG::") + 6, xmlMapCrs.length);
         loadEPSG('http://epsg.io/' + EPSG + '.js', function() {
 	  // Except for EPSG:3821 (which is incomplete)
@@ -92,19 +120,19 @@ ckan.module('wmtspreview', function (jQuery, _) {
             ]);
           }
           EPSGUser = proj4('EPSG:' + EPSG);
-          for (var i=0, max=mapIds.length; i < max; i++) {
-            lowercorner = mapLatLngBounds[mapIds[i]][0];
-            uppercorner = mapLatLngBounds[mapIds[i]][1];
-            mapLatLngBounds[mapIds[i]] = [transCoord(lowercorner[1], lowercorner[0], EPSGUser), transCoord(uppercorner[1], uppercorner[0], EPSGUser)];
-          }
-          self.map.fitBounds(mapLatLngBounds[mapIds[0]]);
+          jQuery.each(mapInfos, function(i, mapInfo) {
+            lowercorner = mapLatLngBounds[mapInfo.id][0];
+            uppercorner = mapLatLngBounds[mapInfo.id][1];
+            mapLatLngBounds[mapInfo.id] = [transCoord(lowercorner[1], lowercorner[0], EPSGUser), transCoord(uppercorner[1], uppercorner[0], EPSGUser)];
+          });
+          self.map.fitBounds(mapLatLngBounds[mapInfos[0].id]);
         });
       }
 
-      overlay = maps[mapTitles[0]];
-      self.map.addLayer(maps[mapTitles[0]]);
+      overlay = maps[mapInfos[0].title];
+      self.map.addLayer(maps[mapInfos[0].title]);
       L.control.layers(maps, null).addTo(self.map);
-      self.map.fitBounds(mapLatLngBounds[mapIds[0]]);
+      if (mapLatLngBounds[mapInfos[0].id][0] != '') self.map.fitBounds(mapLatLngBounds[mapInfos[0].id]);
       self.map.on({baselayerchange: layerChange});
 
       // Layer control for mobile

@@ -145,7 +145,7 @@ class OLGeoView(GeoViewBase):
 
         view_formats = config.get('ckanext.geoview.ol_viewer.formats', '')
         if view_formats:
-            view_formats.split(' ')
+            view_formats = view_formats.split(' ')
         else:
             view_formats = GEOVIEW_FORMATS
 
@@ -191,13 +191,13 @@ class OLGeoView(GeoViewBase):
             data_dict['resource']['format'] = \
                 self._guess_format_from_extension(data_dict['resource']['url'])
 
-        proxy_service_url = None
-
         if self.proxy_enabled and not same_domain:
             proxy_url = proxy.get_proxified_resource_url(data_dict)
             proxy_service_url = get_proxified_service_url(data_dict)
         else:
             proxy_url = data_dict['resource']['url']
+            proxy_service_url = data_dict['resource']['url']
+
         gapi_key = config.get('ckanext.geoview.gapi_key')
         if not p.toolkit.check_ckan_version(min_version='2.3'):
             p.toolkit.c.resource['proxy_url'] = proxy_url
@@ -313,7 +313,7 @@ class WMTSView(GeoViewBase):
 
     def can_view(self, data_dict):
         resource = data_dict['resource']
-        format_lower = resource['format'].lower()
+        format_lower = resource.get('format', '').lower()
 
         if format_lower in self.WMTS:
             return self.same_domain or self.proxy_enabled
