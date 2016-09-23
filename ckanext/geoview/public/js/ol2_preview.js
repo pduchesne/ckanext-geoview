@@ -5,7 +5,9 @@
     if (window.Proj4js) {
         // add your projection definitions here
         // definitions can be found at http://spatialreference.org/ref/epsg/{xxxx}/proj4js/
-        Proj4js.defs["EPSG:31370"] = "+proj=lcc +lat_1=51.16666723333333 +lat_2=49.8333339 +lat_0=90 +lon_0=4.367486666666666 +x_0=150000.013 +y_0=5400088.438 +ellps=intl +towgs84=106.869,-52.2978,103.724,-0.33657,0.456955,-1.84218,1 +units=m +no_defs";
+
+        // warn : 31370 definition from spatialreference.org is wrong
+        Proj4js.defs["EPSG:31370"] = "+proj=lcc +lat_1=51.16666723333333 +lat_2=49.8333339 +lat_0=90 +lon_0=4.367486666666666 +x_0=150000.013 +y_0=5400088.438 +ellps=intl +towgs84=-106.868628,52.297783,-103.723893,0.336570,-0.456955,1.842183,-1.2747 +units=m +no_defs";
     }
 
     var $_ = _ // keep pointer to underscore, as '_' will may be overridden by a closure variable when down the stack
@@ -436,9 +438,30 @@
                     layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher()
 
                     this.map.addControl(layerSwitcher);
-
+                    
                     var bboxFrag;
                     var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
+
+                    var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(OL_HELPERS.EPSG4326, this.map.getProjectionObject()));
+                    if (bbox) this.map.zoomToExtent(bbox);
+
+                    var $map = this.map;
+                    var mapChangeListener = function() {
+                        var newBbox = $map.getExtent() && $map.getExtent().transform($map.getProjectionObject(), OL_HELPERS.EPSG4326).toString()
+
+                        if (newBbox) {
+                            var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
+                            fragMap['bbox'] = newBbox;
+
+                            (window.parent || window).location.hash = OL_HELPERS.kvp2string(fragMap)
+                        }
+                    }
+
+                    // listen to bbox changes to update URL fragment
+                    this.map.events.register("moveend", this.map, mapChangeListener);
+
+                    this.map.events.register("zoomend", this.map, mapChangeListener);
+
 
                     var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(OL_HELPERS.EPSG4326, this.map.getProjectionObject()));
                     if (bbox) this.map.zoomToExtent(bbox);

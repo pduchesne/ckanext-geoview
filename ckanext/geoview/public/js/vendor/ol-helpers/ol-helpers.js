@@ -107,6 +107,15 @@ if (proj4) {
         return kvpMap
     }
 
+    var kvp2string = OL_HELPERS.kvp2string = function (map) {
+        var result = ""
+        for (var key in map) {
+            result += (result.length>0?'&':'') + key + "=" + map[key]
+        }
+
+        return result
+    }
+
     /**
      * Parse a comma-separated set of KVP, typically for URL query or fragments
      * @param url
