@@ -56,6 +56,17 @@ def get_common_map_config(resource_view):
 
     return common_config
 
+def load_basemaps(basemapsFile):
+
+    try:
+        with open(basemapsFile) as config_file:
+            basemapsConfig = json.load(config_file)
+    except Exception, inst:
+        msg = "Couldn't read basemaps config from %r: %s" % (basemapsFile, inst)
+        raise Exception(msg)
+
+    return basemapsConfig
+
 def get_openlayers_viewer_config():
     '''
         Returns a dict with all configuration options related to the
@@ -77,6 +88,10 @@ class GeoViewBase(p.SingletonPlugin):
 
     proxy_enabled = False
     same_domain = False
+
+    def configure(self, config):
+        basemapConfigFile = config.get('ckanext.geoview.basemaps', None)
+        self.basemapsConfig = basemapConfigFile and load_basemaps(basemapConfigFile)
 
     def schema(self):
         return {
@@ -212,7 +227,8 @@ class OLGeoView(GeoViewBase):
                 'resource_view_json': 'resource_view' in data_dict and json.dumps(data_dict['resource_view']),
                 'proxy_service_url': proxy_service_url,
                 'proxy_url': proxy_url,
-                'gapi_key': gapi_key}
+                'gapi_key': gapi_key,
+                'basemapsConfig' : self.basemapsConfig}
 
 
 class GeoJSONView(GeoViewBase):

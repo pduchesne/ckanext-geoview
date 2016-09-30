@@ -50,6 +50,7 @@
 
  #data-preview .olControlLayerSwitcher {
      max-height: 90%;
+     z-index: 1010;
  }
 
  #data-preview .olControlLayerSwitcher label {
@@ -82,4 +83,10 @@
 
  #data-preview .dataLayersDiv .labelSpan {
      font-size: 80%;
+ }
+
+
+
+#basemapSelector {
+     width: 100%;
  }
