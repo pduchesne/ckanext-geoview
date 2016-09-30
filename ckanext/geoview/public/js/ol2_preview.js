@@ -386,7 +386,7 @@
                 var proxyServiceUrl = this.options.proxy_service_url;
 
                 if (this.options.resourceView)
-                    $_.extend(ckan.geoview, this.options.resourceView);
+                    $_.extend(ckan.geoview, JSON.parse(this.options.resourceView));
 
                 ckan.geoview.gapi_key = this.options.gapi_key;
 

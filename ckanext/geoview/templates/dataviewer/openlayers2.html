@@ -2,7 +2,7 @@
 
 {% block page %}
 
-    {% set map_config = h.get_common_map_config_geoviews(resource_view) %}
+    {% set map_config = h.get_common_map_config_geoviews() %}
     {% set ol_config = h.get_openlayers_viewer_config() %}
     <div id="data-preview">
         <div id="map-container"
@@ -13,7 +13,7 @@
              data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
              data-module-map_config="{{ h.dump_json(map_config) }}"
              data-module-ol_config="{{ h.dump_json(ol_config) }}"
-             {% if resource_view %} data-module-resource-view = "{{ h.dump_json(resource_view) }}" {% endif %}
+             {% if resource_view_json %} data-module-resource-view = "{{ h.dump_json(resource_view_json) }}" {% endif %}
              {% if basemapsConfig %} data-module-basemaps-config = "{{ h.dump_json(basemapsConfig) }}" {% endif %}
              >
             <h4 class="loading-dialog">

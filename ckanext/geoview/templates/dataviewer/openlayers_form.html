@@ -1,10 +1,5 @@
-{% extends "dataviewer/base_form.html" %}
+{% import 'macros/form.html' as form %}
 
-{% block form %}
+{{ form.checkbox('feature_hoveron', label=_('Display Feature Info on Hover'), value=True, checked=data.feature_hoveron, error=errors.feature_hoveron) }}
 
-    {{ super() }}
-    {{ form.checkbox('feature_hoveron', label=_('Display Feature Info on Hover'), value=True, checked=data.feature_hoveron, error=errors.feature_hoveron) }}
-
-    {{ form.textarea('feature_style', label=_('Feature style descriptor'), value=data.feature_style, error=errors.feature_style) }}
-
-{% endblock %}
+{{ form.textarea('feature_style', label=_('Feature style descriptor'), value=data.feature_style, error=errors.feature_style) }}
