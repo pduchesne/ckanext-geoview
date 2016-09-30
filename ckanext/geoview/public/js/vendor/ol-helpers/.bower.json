@@ -12,14 +12,14 @@
   ],
   "dependencies": {
     "underscore": ">=1.4.2",
-    "openlayers2": "pduchesne/ol2-bower#master"
+    "openlayers2": "pduchesne/ol2-bower#2.14.hilats"
   },
   "homepage": "https://github.com/pduchesne/ol-helpers",
-  "_release": "fcaf58d68f",
+  "_release": "1e95e9b771",
   "_resolution": {
     "type": "branch",
     "branch": "master",
-    "commit": "fcaf58d68f0d15796ae2c5be4f7df66615c08a70"
+    "commit": "1e95e9b771abe265a102c42c224bd601e01e40cc"
   },
   "_source": "git://github.com/pduchesne/ol-helpers.git",
   "_target": "*",

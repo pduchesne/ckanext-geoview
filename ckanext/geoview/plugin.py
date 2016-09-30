@@ -21,7 +21,7 @@ boolean_validator = p.toolkit.get_validator('boolean_validator')
 log = getLogger(__name__)
 
 GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'esrigeojson',
-                   'gft', 'arcgis_rest']
+                   'gft', 'arcgis_rest', 'wmts']
 
 
 def get_proxified_service_url(data_dict):
@@ -40,21 +40,25 @@ def get_proxified_service_url(data_dict):
     return url
 
 
-def get_common_map_config(resource_view):
+def get_common_map_config():
     '''
         Returns a dict with all configuration options related to the common
         base map (ie those starting with 'ckanext.spatial.common_map.')
     '''
     namespace = 'ckanext.spatial.common_map.'
-    common_config = dict([(k.replace(namespace, ''), v) for k, v in config.iteritems()
-                        if k.startswith(namespace)])
+    return dict([(k.replace(namespace, ''), v) for k, v in config.iteritems()
+                 if k.startswith(namespace)])
 
-    if resource_view:
-        for (k, v) in resource_view.iteritems():
-            if k.startswith('common_map.'):
-                common_config[k.replace('common_map.', '')] = v
+def load_basemaps(basemapsFile):
 
-    return common_config
+    try:
+        with open(basemapsFile) as config_file:
+            basemapsConfig = json.load(config_file)
+    except Exception, inst:
+        msg = "Couldn't read basemaps config from %r: %s" % (basemapsFile, inst)
+        raise Exception(msg)
+
+    return basemapsConfig
 
 def get_openlayers_viewer_config():
     '''
@@ -78,11 +82,9 @@ class GeoViewBase(p.SingletonPlugin):
     proxy_enabled = False
     same_domain = False
 
-    def schema(self):
-        return {
-            'common_map.type': [ignore_empty],
-            'common_map.custom.url': [ignore_empty]
-        }
+    def configure(self, config):
+        basemapConfigFile = config.get('ckanext.geoview.basemaps', None)
+        self.basemapsConfig = basemapConfigFile and load_basemaps(basemapConfigFile)
 
     def update_config(self, config):
         p.toolkit.add_public_directory(config, 'public')
@@ -105,6 +107,10 @@ class OLGeoView(GeoViewBase):
         m.connect('/dataset/{id}/resource/{resource_id}/service_proxy',
                   controller=controller,
                   action='proxy_service')
+
+        m.connect('/basemap_service/{map_id}',
+                  controller=controller,
+                  action='proxy_service_url')
         return m
 
     # ITemplateHelpers
@@ -118,18 +124,16 @@ class OLGeoView(GeoViewBase):
     # IResourceView (CKAN >=2.3)
 
     def info(self):
-        s = self.schema().copy()
-        s.update({
-            'feature_hoveron': [ignore_empty, boolean_validator],
-            'feature_style': [ignore_empty]
-        })
         return {'name': 'geo_view',
                 'title': 'Map viewer (OpenLayers)',
                 'icon': 'globe',
                 'iframed': True,
                 'default_title': p.toolkit._('Map viewer'),
-                'schema': s
-               }
+                'schema': {
+                    'feature_hoveron': [ignore_empty, boolean_validator],
+                    'feature_style': [ignore_empty]
+                },
+                }
 
     def can_view(self, data_dict):
         format_lower = data_dict['resource'].get('format', '').lower()
@@ -204,11 +208,11 @@ class OLGeoView(GeoViewBase):
             p.toolkit.c.resource['proxy_service_url'] = proxy_service_url
             p.toolkit.c.resource['gapi_key'] = gapi_key
 
-        return {'resource_view': 'resource_view' in data_dict and data_dict['resource_view'],
-                'resource_view_json': 'resource_view' in data_dict and json.dumps(data_dict['resource_view']),
+        return {'resource_view_json': 'resource_view' in data_dict and json.dumps(data_dict['resource_view']),
                 'proxy_service_url': proxy_service_url,
                 'proxy_url': proxy_url,
-                'gapi_key': gapi_key}
+                'gapi_key': gapi_key,
+                'basemapsConfig' : self.basemapsConfig}
 
 
 class GeoJSONView(GeoViewBase):
@@ -243,9 +247,6 @@ class GeoJSONView(GeoViewBase):
 
     def view_template(self, context, data_dict):
         return 'dataviewer/geojson.html'
-
-    def form_template(self, context, data_dict):
-        return 'dataviewer/base_form.html'
 
     # IResourcePreview (CKAN < 2.3)
 
@@ -282,8 +283,6 @@ class GeoJSONView(GeoViewBase):
             data_dict['resource']['url'] = \
                 proxy.get_proxified_resource_url(data_dict)
 
-        return {'resource_view': 'resource_view' in data_dict and data_dict['resource_view']}
-
     # ITemplateHelpers
 
     def get_helpers(self):
@@ -308,7 +307,6 @@ class WMTSView(GeoViewBase):
                 'icon': 'map-marker',
                 'iframed': True,
                 'default_title': p.toolkit._('WMTS'),
-                'schema': self.schema()
                 }
 
     def can_view(self, data_dict):
@@ -321,9 +319,6 @@ class WMTSView(GeoViewBase):
 
     def view_template(self, context, data_dict):
         return 'dataviewer/wmts.html'
-
-    def form_template(self, context, data_dict):
-        return 'dataviewer/base_form.html'
 
     # IResourcePreview (CKAN < 2.3)
 
@@ -359,8 +354,6 @@ class WMTSView(GeoViewBase):
                 data_dict['resource'].get('url')
             data_dict['resource']['url'] = \
                 proxy.get_proxified_resource_url(data_dict)
-
-        return {'resource_view': 'resource_view' in data_dict and data_dict['resource_view']}
 
     ## ITemplateHelpers
 

@@ -11,7 +11,7 @@ log = getLogger(__name__)
 MAX_FILE_SIZE = 3 * 1024 * 1024  # 1MB
 CHUNK_SIZE = 512
 
-def proxy_service(self, context, data_dict):
+def proxy_service_resource(self, context, data_dict):
     ''' Chunked proxy for resources. To make sure that the file is not too
     large, first, we try to get the content length from the headers.
     If the headers to not contain a content length (if it is a chinked
@@ -21,6 +21,10 @@ def proxy_service(self, context, data_dict):
     log.info('Proxify resource {id}'.format(id=resource_id))
     resource = logic.get_action('resource_show')(context, {'id': resource_id})
     url = resource['url']
+
+    return proxy_service_url(self, url)
+
+def proxy_service_url(self, url):
 
     parts = urlparse.urlsplit(url)
     if not parts.scheme or not parts.netloc:
@@ -80,4 +84,8 @@ class ServiceProxyController(base.BaseController):
         data_dict = {'resource_id': resource_id}
         context = {'model': base.model, 'session': base.model.Session,
                    'user': base.c.user or base.c.author}
-        return proxy_service(self, context, data_dict)
+        return proxy_service_resource(self, context, data_dict)
+
+    def proxy_service_url(self, map_id):
+        url = base.config.get('ckanext.spatial.common_map.'+map_id+'.url')
+        return proxy_service_url(self, url)

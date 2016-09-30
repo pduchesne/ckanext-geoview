@@ -1,5 +1,15 @@
 // Openlayers preview module
 
+if (proj4) {
+    window.Proj4js = {
+        Proj: function (code) {
+            return proj4(Proj4js.defs[code]);
+        },
+        defs: proj4.defs,
+        transform: proj4
+    };
+}
+
 (function() {
 
     // Establish the root object, `window` in the browser, or `global` on the server.
@@ -10,7 +20,6 @@
 
     var EPSG4326 = OL_HELPERS.EPSG4326 = new OpenLayers.Projection("EPSG:4326")
     var Mercator = OL_HELPERS.Mercator = new OpenLayers.Projection("EPSG:3857")
-    var CRS84 = OL_HELPERS.CRS84 = new OpenLayers.Projection("urn:x-ogc:def:crs:EPSG:4326")
 
     var MAX_FEATURES = 300
 
@@ -72,6 +81,17 @@
         }
     )
 
+    OpenLayers.Layer.WMTSLayer = OpenLayers.Class(OpenLayers.Layer.WMTS,
+        {
+            getDataExtent: function () {
+                return (this.mlDescr &&
+                    this.mlDescr.bounds &&
+                    this.mlDescr.bounds.transform(EPSG4326, this.map.getProjectionObject()))
+                    || OpenLayers.Layer.WMTS.prototype.getDataExtent.call(this, arguments)
+            }
+        }
+    )
+
     /**
      * Parse a comma-separated set of KVP, typically for URL query or fragments
      * @param url
@@ -85,6 +105,15 @@
         }
 
         return kvpMap
+    }
+
+    var kvp2string = OL_HELPERS.kvp2string = function (map) {
+        var result = ""
+        for (var key in map) {
+            result += (result.length>0?'&':'') + key + "=" + map[key]
+        }
+
+        return result
     }
 
     /**
@@ -204,6 +233,31 @@
         });
     }
 
+    OL_HELPERS.parseWMTSCapas = function (url, callback, failCallback) {
+        var wmtsFormat = new OpenLayers.Format.WMTSCapabilities();
+
+        OpenLayers.Request.GET({
+            url: url,
+            params: {
+                SERVICE: "WMTS",
+                REQUEST: "GetCapabilities",
+                VERSION: "1.0.0"
+            },
+            success: function (request) {
+                var doc = request.responseXML;
+                if (!doc || !doc.documentElement) {
+                    doc = request.responseText;
+                }
+                var capabilities = wmtsFormat.read(doc)
+                callback(capabilities)
+            },
+            failure: failCallback || function () {
+                alert("Trouble getting capabilities doc");
+                OpenLayers.Console.error.apply(OpenLayers.Console, arguments);
+            }
+        });
+    }
+
     OL_HELPERS.createKMLLayer = function (url) {
 
         var kml = new OpenLayers.Layer.Vector("KML", {
@@ -284,7 +338,7 @@
         return gml
     }
 
-    OL_HELPERS.withFeatureTypesLayers = function (url, layerProcessor, ftName) {
+    OL_HELPERS.withFeatureTypesLayers = function (url, layerProcessor, ftName, map, useGET) {
 
         parseWFSCapas(
             url,
@@ -301,7 +355,7 @@
                 $_.each(candidates, function (candidate, idx) {
                     parseWFSFeatureTypeDescr(
                         url,
-                        candidate.name,
+                            candidate.prefixedName || candidate.name,
                         ver,
                         function (descr) {
                             if (descr.featureTypes) {
@@ -312,25 +366,57 @@
                                 // ignore feature types with no gml prop. Correct ?
                                 if (geomProps && geomProps.length > 0) {
 
-                                    var ftLayer = new OpenLayers.Layer.WFSLayer(
-                                        candidate.name, {
-                                            //style: default_style,
+                                    var ftLayer
+
+                                    if (useGET) {
+                                        var wfs_options = {
+                                            url: url,
+                                            params: {
+                                                request: "GetFeature",
+                                                service: "WFS",
+                                                version: ver,
+                                                typeName: candidate.prefixedName || candidate.name,
+                                                maxFeatures: MAX_FEATURES,
+                                                srsName: map ? map.getProjectionObject() : Mercator,
+                                                outputFormat: "gml2"
+                                            },
+                                            format: new OpenLayers.Format.GML({
+                                                featureNS: candidate.featureNS,
+                                                geometryName: geomProps[0].name
+                                            }),
+                                            srsInBBOX : true
+                                        }
+
+                                        ftLayer = new OpenLayers.Layer.Vector('WFS', {
                                             ftDescr: candidate,
                                             title: candidate.title,
                                             strategies: [new OpenLayers.Strategy.BBOXWithMax({maxFeatures: MAX_FEATURES, ratio: 1})],
-                                            projection: Mercator,
+                                            projection: map ? map.getProjectionObject() : Mercator,
                                             visibility: idx == 0,
-                                            protocol: new OpenLayers.Protocol.WFS({
-                                                headers: {"Content-Type": "application/xml; charset=UTF-8"}, // (failed) attempt at dealing with accentuated chars in some feature types
-                                                version: ver,
-                                                url: url,
-                                                featureType: candidate.name,
-                                                srsName: Mercator,
-                                                featureNS: undefined,
-                                                maxFeatures: MAX_FEATURES,
-                                                geometryName: geomProps[0].name
+                                            protocol: new OpenLayers.Protocol.HTTP(wfs_options)
+                                        });
+                                        ftLayer.getDataExtent = OpenLayers.Layer.WFSLayer.prototype.getDataExtent
+                                    } else {
+                                        ftLayer = new OpenLayers.Layer.WFSLayer(
+                                            candidate.name, {
+                                                //style: default_style,
+                                                ftDescr: candidate,
+                                                title: candidate.title,
+                                                strategies: [new OpenLayers.Strategy.BBOXWithMax({maxFeatures: MAX_FEATURES, ratio: 1})],
+                                                projection: map ? map.getProjectionObject() : Mercator,
+                                                visibility: idx == 0,
+                                                protocol: new OpenLayers.Protocol.WFS({
+                                                    headers: {"Content-Type": "application/xml; charset=UTF-8"}, // (failed) attempt at dealing with accentuated chars in some feature types
+                                                    version: ver,
+                                                    url: url,
+                                                    featureType: candidate.name,
+                                                    srsName: map ? map.getProjectionObject() : Mercator,
+                                                    featureNS: candidate.featureNS,
+                                                    maxFeatures: MAX_FEATURES,
+                                                    geometryName: geomProps[0].name
+                                                })
                                             })
-                                        })
+                                    }
 
                                     layerProcessor(ftLayer)
                                 }
@@ -380,6 +466,44 @@
         )
 
     }
+
+
+    OL_HELPERS.withWMTSLayers = function (capaUrl, layerProcessor, layerName, projection) {
+
+        OL_HELPERS.parseWMTSCapas(
+            capaUrl,
+            function (capas) {
+
+                var candidates = capas.contents.layers
+                if (layerName) candidates = candidates.filter(function (layer) {
+                    return layer.identifier == layerName
+                })
+
+                var ver = capas.version
+
+                $_.each(candidates, function (candidate, idx) {
+                    var mapLayer = new OpenLayers.Format.WMTSCapabilities().createLayer(
+                        capas,
+                        {
+                            mlDescr: candidate,
+                            name: candidate.title,
+                            layer: candidate.identifier,
+                            //format: "image/png",  // TODO take format from layer descriptor
+                            isBaseLayer: false,
+                            projection : projection
+                        }
+                    );
+
+                    mapLayer.getDataExtent = OpenLayers.Layer.WMTSLayer.prototype.getDataExtent
+
+                    layerProcessor(mapLayer)
+                })
+
+            }
+        )
+
+    }
+
 
     OL_HELPERS.createGeoJSONLayer = function (url) {
 
