@@ -2,7 +2,7 @@
 
 {% block page %}
 
-    {% set map_config = h.get_common_map_config_geoviews(resource_view) %}
+    {% set map_config = h.get_common_map_config_geoviews() %}
     {% set ol_config = h.get_openlayers_viewer_config() %}
     <div id="data-preview">
         <div id="map-container"

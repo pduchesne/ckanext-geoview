@@ -233,7 +233,6 @@ class GeoJSONView(GeoViewBase):
                 'icon': 'map-marker',
                 'iframed': True,
                 'default_title': p.toolkit._('GeoJSON'),
-                'schema': self.schema()
                 }
 
     def can_view(self, data_dict):
