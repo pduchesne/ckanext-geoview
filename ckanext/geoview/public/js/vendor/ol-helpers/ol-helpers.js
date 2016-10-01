@@ -62,9 +62,10 @@ if (proj4) {
     OpenLayers.Layer.WFSLayer = OpenLayers.Class(OpenLayers.Layer.Vector,
         {
             getDataExtent: function () {
-                return (this.ftDescr &&
-                    this.ftDescr.bounds &&
-                    this.ftDescr.bounds.transform(EPSG4326, this.map.getProjectionObject()))
+                var bbox = this.ftDescr &&
+                    (this.ftDescr.bounds || // WFS 1.1+
+                     (this.ftDescr.latLongBoundingBox && new OpenLayers.Bounds(this.ftDescr.latLongBoundingBox))) // WFS 1.0
+                return (bbox && bbox.transform(EPSG4326, this.map.getProjectionObject()))
                     || OpenLayers.Layer.Vector.prototype.getDataExtent.call(this, arguments)
             }
         }

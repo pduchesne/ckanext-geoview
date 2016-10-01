@@ -15,11 +15,11 @@
     "openlayers2": "pduchesne/ol2-bower#2.14.hilats"
   },
   "homepage": "https://github.com/pduchesne/ol-helpers",
-  "_release": "1e95e9b771",
+  "_release": "3f1f24ab34",
   "_resolution": {
     "type": "branch",
     "branch": "master",
-    "commit": "1e95e9b771abe265a102c42c224bd601e01e40cc"
+    "commit": "3f1f24ab34bc693a938424a52cf6ebeda51af0c3"
   },
   "_source": "git://github.com/pduchesne/ol-helpers.git",
   "_target": "*",
