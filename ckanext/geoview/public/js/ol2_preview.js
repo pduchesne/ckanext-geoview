@@ -138,6 +138,14 @@
             }
         );
 
+        var esrirestExtractor = function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
+            var parsedUrl = resource.url.split('#');
+            var url = proxyServiceUrl || parsedUrl[0];
+
+            var layerName = parsedUrl.length > 1 && parsedUrl[1];
+
+            OL_HELPERS.withArcGisLayers(url, layerProcessor, layerName, parsedUrl[0]);
+        }
 
         ckan.geoview.layerExtractors = {
 
@@ -182,14 +190,8 @@
                 var url = proxyUrl || resource.url;
                 layerProcessor(OL_HELPERS.createEsriGeoJSONLayer(url));
             },
-            'arcgis_rest': function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var parsedUrl = resource.url.split('#');
-                var url = proxyServiceUrl || parsedUrl[0];
-
-                var layerName = parsedUrl.length > 1 && parsedUrl[1];
-
-                OL_HELPERS.withArcGisLayers(url, layerProcessor, layerName, parsedUrl[0]);
-            },
+            'arcgis_rest': esrirestExtractor ,
+            'esri rest': esrirestExtractor ,
             'gft': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
                 var tableId = OL_HELPERS.parseURL(resource.url).query.docid;
                 layerProcessor(OL_HELPERS.createGFTLayer(tableId, ckan.geoview.gapi_key));
