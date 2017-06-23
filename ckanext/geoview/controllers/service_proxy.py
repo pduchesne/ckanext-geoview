@@ -27,7 +27,7 @@ def proxy_service_resource(self, context, data_dict):
 
 def proxy_service_url(self, url):
 
-    excluded_params = ['service', 'version', 'request', 'outputformat']
+    excluded_params = ['service', 'version', 'request', 'outputformat', 'typename', 'layers', 'srsname', 'bbox', 'maxfeatures']
 
     parts = urlparse.urlsplit(url)
     if not parts.scheme or not parts.netloc:
