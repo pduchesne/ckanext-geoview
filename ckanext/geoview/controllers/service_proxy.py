@@ -5,6 +5,7 @@ import requests
 
 import ckan.logic as logic
 import ckan.lib.base as base
+from urllib import urlencode
 
 log = getLogger(__name__)
 
@@ -26,6 +27,8 @@ def proxy_service_resource(self, context, data_dict):
 
 def proxy_service_url(self, url):
 
+    excluded_params = ['service', 'version', 'request', 'outputformat', 'typename', 'layers', 'srsname', 'bbox', 'maxfeatures']
+
     parts = urlparse.urlsplit(url)
     if not parts.scheme or not parts.netloc:
         base.abort(409, detail='Invalid URL.')
@@ -34,8 +37,15 @@ def proxy_service_url(self, url):
         req = self._py_object.request
         method = req.environ["REQUEST_METHOD"]
 
-        url = url.split('#')[0] # remove potential fragment
+        params = urlparse.parse_qs(parts.query)
 
+        for key in dict(params):
+            if key.lower() in excluded_params:
+                del params[key]
+
+        parts = parts._replace(query = urlencode(params))
+        parts = parts._replace(fragment = '') # remove potential fragment
+        url = parts.geturl()
         if method == "POST":
             length = int(req.environ["CONTENT_LENGTH"])
             headers = {"Content-Type": req.environ["CONTENT_TYPE"]}
