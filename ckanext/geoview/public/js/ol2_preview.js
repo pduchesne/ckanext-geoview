@@ -154,10 +154,13 @@
                 layerProcessor(OL_HELPERS.createGeoJSONLayer(url));
             },
             'wfs': function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var parsedUrl = resource.url.split('#');
-                var url = proxyServiceUrl || parsedUrl[0];
+                var parsedUrl = OL_HELPERS.parseURL(resource.url);
+                var url = proxyServiceUrl || parsedUrl.path;
 
-                var ftName = parsedUrl.length > 1 && parsedUrl[1];
+                var ftName = parsedUrl.hash['id'] || parsedUrl.hash['typename'] || parsedUrl.query['typename']
+                if (ftName && ftName.indexOf(':') >= 0)
+                    // remove the NS
+                    ftName = ftName.split(':')[1]
                 OL_HELPERS.withFeatureTypesLayers(url, layerProcessor, ftName, map, true /* useGET */);
             },
             'wms' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
@@ -456,7 +459,7 @@
                             //projection: OL_HELPERS.Mercator, // this is needed for WMS layers (most only accept 3857), but causes WFS to fail
                         });
 
-                    layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher(
+                    var layerSwitcher = new OpenLayers.Control.CKANLayerSwitcher(
                         {
                             'div':$('#data-preview>.layerswitcher')[0],
                             'baselayers':baseMapsConfig
@@ -469,23 +472,6 @@
 
                     var bbox = (fragMap.bbox && new OpenLayers.Bounds(fragMap.bbox.split(',')).transform(OL_HELPERS.EPSG4326, this.map.getProjectionObject()));
                     if (bbox) this.map.zoomToExtent(bbox);
-
-                    var $map = this.map;
-                    var mapChangeListener = function() {
-                        var newBbox = $map.getExtent() && $map.getExtent().transform($map.getProjectionObject(), OL_HELPERS.EPSG4326).toString()
-
-                        if (newBbox) {
-                            var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
-                            fragMap['bbox'] = newBbox;
-
-                            (window.parent || window).location.hash = OL_HELPERS.kvp2string(fragMap)
-                        }
-                    }
-
-                    // listen to bbox changes to update URL fragment
-                    this.map.events.register("moveend", this.map, mapChangeListener);
-
-                    this.map.events.register("zoomend", this.map, mapChangeListener);
 
                     var $map = this.map;
                     var mapChangeListener = function() {
