@@ -1,0 +1,32 @@
+/* OpenLayers styling */
+.ol-viewport .popupContainer {
+  background-color: black;
+  color: white;
+  margin-top: 5px;
+  margin-left: 5px;
+}
+.ol-viewport .popupContainer .popupContent > div {
+  padding: 3px;
+}
+.ol-viewport .popupContainer .name {
+  font-weight: bold;
+  border-bottom: 1px solid #e5e4e7;
+}
+.ol-viewport .layer-switcher {
+  position: absolute;
+  right: 10px;
+  top: 40px;
+}
+.ol-viewport .layer-switcher button {
+  position: absolute;
+  right: 0px;
+  top: 0px;
+  background-color: red;
+  width: 10px;
+  height: 10px;
+}
+.ol-viewport .layer-switcher .panel {
+  background-color: black;
+  color: white;
+  padding: 5px;
+}

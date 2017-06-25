@@ -2,7 +2,7 @@
   "name": "ckanext-geoview",
   "version": "0.0.2",
   "dependencies": {
-    "ol-helpers": "pduchesne/ol-helpers",
+    "ol-helpers": "pduchesne/ol-helpers#ol4",
     "leaflet": "~0.7.7",
     "proj4leaflet": "~0.7.2"
   },

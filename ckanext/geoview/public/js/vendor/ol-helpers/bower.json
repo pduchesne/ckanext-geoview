@@ -1,7 +1,7 @@
 {
   "name": "ol-helpers",
   "description": "Handy glue code for Openlayers",
-  "version": "1.0.0",
+  "version": "4.0.0",
   "keywords": [
     "openlayers",
     "geo",
@@ -9,10 +9,13 @@
   ],
   "main": [
     "EsriGeoJSON.js",
-    "ol-helpers.js"
+    "ol-helpers.js",
+    "ol-layer-switcher.js",
+    "ol-helpers.css"
   ],
   "dependencies": {
     "underscore": ">=1.4.2",
-    "openlayers2": "pduchesne/ol2-bower#2.14.hilats"
+    "openlayers": "https://github.com/openlayers/openlayers/releases/download/v4.0.1/v4.0.1-dist.zip",
+    "fetch": "^2.0.3"
   }
 }
