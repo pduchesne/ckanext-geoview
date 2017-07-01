@@ -20,6 +20,17 @@ if (typeof proj4 != "undefined" && proj4) {
     };
 }
 
+String.prototype.hashCode = function() {
+    var hash = 0, i, chr;
+    if (this.length === 0) return hash;
+    for (i = 0; i < this.length; i++) {
+        chr   = this.charCodeAt(i);
+        hash  = ((hash << 5) - hash) + chr;
+        hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+};
+
 if (window.Proj4js) {
     // add your projection definitions here
     // definitions can be found at http://spatialreference.org/ref/epsg/{xxxx}/proj4js/
@@ -40,10 +51,10 @@ if (window.Proj4js) {
 
 // redefine GML EPSG:4326 with lon/lat axis order;
 // Don't do that. Force usage of EPSG4326_LONLAT in format.GML instead
-//ol.proj.addProjection(new ol.proj.EPSG4326_('http://www.opengis.net/gml/srs/epsg.xml#4326', 'enu'));
+//ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('http://www.opengis.net/gml/srs/epsg.xml#4326', 'enu'));
 
 // Define a special projection with lon/lat axis order to be used in format.GML hack
-ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
+ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'));
 
 (function() {
 
@@ -55,42 +66,10 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
     var EPSG4326 = OL_HELPERS.EPSG4326 = ol.proj.get("EPSG:4326")
     var EPSG4326_LONG = OL_HELPERS.EPSG4326_LONG = ol.proj.get('urn:ogc:def:crs:EPSG:6.6:4326')
-    var EPSG4326_LONLAT = OL_HELPERS.EPSG4326_LONLAT = new ol.proj.EPSG4326_('EPSG:4326', 'enu')
+    var EPSG4326_LONLAT = OL_HELPERS.EPSG4326_LONLAT = new ol.proj.EPSG4326.Projection_('EPSG:4326', 'enu')
     var Mercator = OL_HELPERS.Mercator = ol.proj.get("EPSG:3857")
     var WORLD_BBOX = OL_HELPERS.WORLD_BBOX = [-180, -90, 180, 90]
     var MAX_FEATURES = 300
-
-     /* TODO_OL4
-      var context = {
-      getColor: function(feature) {
-      return (feature.data.RGB && "rgb("+feature.data.RGB+")") || "#5784BF"
-      }
-      };
-      var template = {
-      fillColor: "${getColor}", // using context.getColor(feature)
-      fillOpacity: 0.1,
-      //graphicOpacity: 1,
-      strokeColor: "#2a6496",
-      strokeWidth: 1,
-      pointRadius: 5
-      };
-      var defaultStyleMap = OL_HELPERS.defaultStyleMap = new OpenLayers.StyleMap({
-      'default': new OpenLayers.Style(template, {context: context}),
-      'select': new OpenLayers.Style(_.extend({}, template, {fillOpacity: 0.4, strokeWidth: 2}), {context: context}),
-      'temporary': new OpenLayers.Style(template, {context: context})
-      })
-     */
-    var stroke = new ol.style.Stroke({color: 'black', width: 2});
-    var fill = new ol.style.Fill({color: 'red'});
-    var default_style = new ol.style.RegularShape({
-        radius: 10,
-        points: 5,
-        angle: Math.PI,
-        fill: fill,
-        stroke: stroke
-    })
-
-
 
     var isNumeric = function(n) {
         return !isNaN(parseFloat(n)) && isFinite(n);
@@ -117,28 +96,10 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                     isNumeric(projectedBbox[1]) &&
                     isNumeric(projectedBbox[2]) &&
                     isNumeric(projectedBbox[3]))
-                /* TODO_OL4 if map already has a set extent, extend it to fit, rather than set it ? */
+
                     _view.fit(projectedBbox, {constrainResolution: false})
                 else {
                     console.warn("Adding layer : could not find extent to zoom to")
-                    /* TODO_OL4 still needed ?
-                     var firstExtent = false
-                     var _this = this
-                     layer.events.register(
-                     "loadend",
-                     layer,
-                     function (e) {
-                     if (!firstExtent) {
-                     var bbox = e && e.object && e.object.getDataExtent && e.object.getDataExtent()
-                     if (bbox)
-                     if (_this.getExtent()) this.getExtent().extend(bbox)
-                     else _this.zoomToExtent(bbox)
-                     else
-                     _this.zoomToMaxExtent()
-                     firstExtent = true
-                     }
-                     })
-                     */
                 }
             }
 
@@ -161,23 +122,44 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
     }
 
+    /**
+     * Override loadFeatures to implement max features cap.
+     * Take into account return value of loader func and reload new batches of data when needed
+     */
+    ol.source.Vector.prototype.loadFeatures = function(
+        extent, resolution, projection) {
+        var loadedExtentsRtree = this.loadedExtentsRtree_;
+        var extentsToLoad = this.strategy_(extent, resolution);
+        var i, ii;
+        for (i = 0, ii = extentsToLoad.length; i < ii; ++i) {
+            var extentToLoad = extentsToLoad[i];
+            var alreadyLoaded = loadedExtentsRtree.forEachInExtent(extentToLoad,
+                    function(object) {
+                        // return true if new extent is contained in a fully loaded extent
+                        // or if new extent contains a partially loaded extent
+                    return (object.extentCovered && ol.extent.containsExtent(object.extent, extentToLoad)) ||
+                           (!object.extentCovered && ol.extent.containsExtent(extentToLoad, object.extent));
+                });
+            if (!alreadyLoaded) {
+                // return value of loader is true if extent was partially loaded (due to max features cap)
+                var promise = this.loader_.call(this, extentToLoad, resolution, projection);
+                var insertExtentFn = function(extentCovered) {
+                    loadedExtentsRtree.insert(extentToLoad, {extent: extentToLoad.slice(), extentCovered: extentCovered});
+                }
+                if (promise) {
+                    promise.then(
+                        function(extentPartiallyCovered) { insertExtentFn(!extentPartiallyCovered) },
+                        function(err) { insertExtentFn(false) });
+                } else {
+                    insertExtentFn(true)
+                }
 
-
-    /* TODO_OL4 : ol.strategy.bbox is now a plain function
-    OpenLayers.Strategy.BBOXWithMax = OpenLayers.Class(OpenLayers.Strategy.BBOX, {
-        update: function (options) {
-            var mapBounds = this.getMapBounds() || new OpenLayers.Bounds(-180, -90, 180, 90);
-
-            var maxFeatures = this.layer.protocol && this.layer.protocol.maxFeatures
-
-            if (mapBounds !== null && ((options && options.force) || ((this.layer.features && this.layer.features.length) >= maxFeatures) ||
-                (this.layer.visibility && this.layer.calculateInRange() && this.invalidBounds(mapBounds)))) {
-                this.calculateBounds(mapBounds);
-                this.resolution = this.layer.map.getResolution();
-                this.triggerRead(options);
             }
         }
-        */
+    };
+
+
+
 
     // Returns the WGS84 bbox
     var getFTSourceExtent = function() {
@@ -197,19 +179,11 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
         return bbox;
     }
 
-    /* TODO_OL4 : redefine a strategy to extract extent from parsed capabilities
-    OpenLayers.Layer.ArcgisVectorLayer = OpenLayers.Class(OpenLayers.Layer.Vector,
-        {
-            getDataExtent: function () {
-                var bbox = this.layerDescr &&
-                    (this.layerDescr.bounds ||
-                        (this.layerDescr.latLongBoundingBox && new OpenLayers.Bounds(this.layerDescr.latLongBoundingBox)))
-                return (bbox && bbox.clone().transform(EPSG4326, this.map.getProjectionObject()))
-                    || OpenLayers.Layer.Vector.prototype.getDataExtent.apply(this, arguments)
-            }
-        }
-    )
-    */
+    var getArcGISVectorExtent = function() {
+        var bbox = this.get('arcgisDescr') && this.get('arcgisDescr').bounds;
+        return bbox;
+    }
+
 
     var pendingEPSGRequests = {};
     var searchEPSG = function(query) {
@@ -253,11 +227,12 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
         this.loadingObjects = []
 
         this.loadingDiv = options.loadingDiv
-        if (!this.loadingDiv) {
-            this.loadingDiv = $("<div style='z-index: 3000; position: absolute; top: 0px;'></div>").text("Loading...")[0]
+        if (this.loadingDiv === undefined) {
+            this.loadingDiv = $("<div class='loader' style='font-size: 10px; margin: 40px 40px; z-index: 3000; position: absolute; top: 0px;'></div>")[0]
         }
+        this.loadingListener = options.loadingListener
 
-        this.getViewport().appendChild(this.loadingDiv);
+        this.loadingDiv && this.getViewport().appendChild(this.loadingDiv);
 
         this.updateLoadingStatus();
     };
@@ -265,9 +240,11 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
     OL_HELPERS.LoggingMap.prototype.updateLoadingStatus = function() {
         if (this.loadingObjects.length == 0) {
-            this.loadingDiv.style.display = 'none'
+            this.loadingDiv && (this.loadingDiv.style.display = 'none');
+            this.loadingListener && this.loadingListener(false);
         } else {
-            this.loadingDiv.style.display = ''
+            this.loadingDiv && (this.loadingDiv.style.display = '');
+            this.loadingListener && this.loadingListener(true);
         }
     };
 
@@ -326,26 +303,37 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
         this.hoveredFeatures = [];
     };
     ol.inherits(OL_HELPERS.FeatureInfoOverlay, ol.Overlay);
-    OL_HELPERS.FeatureInfoOverlay.prototype.setFeatures = function(features) {
+
+    OL_HELPERS.FeatureInfoOverlay.prototype.setFeatures = function(features, displayDetails) {
         if (features.length == 0) {
             this.setPosition(undefined);
             return;
         }
 
-        var feature = features[0]; // TODO_OL4 support multiple features
-        var htmlContent = "<div class='name'>" + feature.get('name') + "</div>";
-        htmlContent += "<div class='id'>" + feature.get('layer').get('title') +" : "+ feature.getId() + "</div>";
-        /*
-         htmlContent += "<table>";
-         feature.getKeys().forEach(function(prop) {
-         htmlContent += "<tr><td>" + prop + "</td><td>" + feature.get(prop) + "</td></tr></div>"
-         })
-         htmlContent += "</table>"
-         */
+        var htmlContent;
 
+        if (displayDetails) {
+            var feature = features[0];
+
+            var layerTitle = feature && feature.layer && feature.layer.get('title')
+            htmlContent = "<div class='name'>" + layerTitle +" : <b>"+ (feature.get('name') || feature.getId()) + "</b></div>";
+
+            htmlContent += "<table>";
+            feature.getKeys().forEach(function(prop) {
+                htmlContent += "<tr><td>" + prop + "</td><td>" + feature.get(prop) + "</td></tr></div>"
+            })
+            htmlContent += "</table>"
+        } else {
+            htmlContent = "";
+            features.forEach(function(feature) {
+                var layerTitle = feature && feature.layer && feature.layer.get('title')
+                htmlContent += "<div class='name'>" + layerTitle +" : <b>"+ (feature.get('name') || feature.getId()) + "</b></div>";
+            })
+        }
 
         $(this.getElement()).find('.popupContent').html(htmlContent);
     }
+
     OL_HELPERS.FeatureInfoOverlay.prototype.handleMapChanged = function() {
         ol.Overlay.prototype.handleMapChanged.call(this);
 
@@ -353,11 +341,13 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
         var _this = this;
         if (map) {
             map.on('pointermove', function(evt) {
+
                 var changed = false;
                 var features = [];
                 map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
-                    features.push(feature);
-                    feature.set('layer', layer);
+                    if (feature) // sometimes feature is undefined (?!)
+                        features.push(feature);
+                    feature.layer = layer
                     if (_this.hoveredFeatures.indexOf(feature)<0) {
                         changed = true
                     }
@@ -367,8 +357,11 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                     changed = true
 
                 if (changed) {
+                    if (_this.displayDetailsTimeout)
+                        clearTimeout(_this.displayDetailsTimeout)
                     _this.hoveredFeatures = features;
                     _this.setFeatures(_this.hoveredFeatures);
+                    _this.displayDetailsTimeout = setTimeout(function() {_this.setFeatures(_this.hoveredFeatures, true);}, 500);
                 }
 
                 if (_this.hoveredFeatures.length > 0) {
@@ -435,17 +428,23 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
     var parseArcGisDescriptor = function (url, callback, failCallback) {
 
-        OpenLayers.Request.GET({
-            url: url,
-            params: {f: "pjson"},
-            success: function (request) {
-                callback(JSON.parse(request.responseText))
-            },
-            failure: failCallback || function () {
-                alert("Trouble getting ArcGIS descriptor");
-                OpenLayers.Console.error.apply(OpenLayers.Console, arguments);
+        var params = {f: "pjson"};
+
+        fetch(url + (url.indexOf('?')>=0?'&':'?') + kvp2string(params),
+            {method:'GET'}
+        ).then(
+            function(response) {
+                return response.text();
             }
-        });
+        ).then(
+            function(text) {
+                var descriptor = JSON.parse(text)
+                callback(descriptor)
+            }
+        ).catch(failCallback || function(ex) {
+            console.warn("Trouble getting ArcGIS descriptor");
+            console.warn(ex);
+        })
     }
 
     var fetchWFSCapas = function (url, callback, failCallback) {
@@ -594,8 +593,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
         source.set('waitingOnFirstData', true)
 
         var kml = new ol.layer.Vector({
-            title: 'KML',
-            //styleMap: defaultStyleMap, // TODO_OL4
+            title: 'KML', // TODO extract title from KML
             source: source
         });
 
@@ -756,7 +754,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
             url,
             function (capas) {
 
-                /* TODO_OL4 should we have a dedicated WFS parser that handles multiple versions ? */
+                /* TODO should we have a dedicated WFS parser that handles multiple versions ? */
                 var ver = capas.version
                 if (ver == "2.0.0")
                     ver = "1.1.0"  // 2.0.0 causes failures in some cases (e.g. Geoserver TOPP States WFS)
@@ -777,7 +775,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
                     fetchWFSFeatureTypeDescr(
                         url,
-                        candidate.name, /* TODO_OL4 deal with WFS that require the prefix to be included : candidate.prefixedName*/
+                        candidate.name, /* TODO deal with WFS that require the prefix to be included : candidate.prefixedName */
                         ver,
                         function (descr) {
                             var ftLayer;
@@ -887,13 +885,10 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                                                     projection: isLonLat4326 ? OL_HELPERS.EPSG4326_LONLAT : resolvedSrs,
                                                     // If specifying featureType, it is mandatory to also specify featureNS
                                                     // if not, OL will introspect and find all NS and feature types
-                                                    //featureType: candidate.name, /* TODO_OL4 deal with WFS that require the prefix to be included : $candidate.prefixedName*/
+                                                    //featureType: candidate.name,
                                                     //featureNS: candidate.featureNS,
 
                                                     gmlFormat: gmlFormat
-
-                                                    /* TODO_OL4 can we ignore the geometryName and leave it up to OL ? */
-                                                    //geometryName: $(geomProps[0]).attr('name')
                                                 })
                                                 ftLayer = new ol.layer.Vector({
                                                     title: candidate.title,
@@ -924,12 +919,12 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                                                                 version: ver,
                                                                 request: 'GetFeature',
                                                                 maxFeatures: MAX_FEATURES,
-                                                                typename: candidate.name, /* TODO_OL4 deal with WFS that require the prefix to be included : $candidate.prefixedName*/
+                                                                typename: candidate.name, /* TODO deal with WFS that require the prefix to be included : $candidate.prefixedName*/
                                                                 srsname: resolvedSrs.getCode(),
                                                                 /* explicit SRS must be provided here, as some impl (geoserver)
                                                                  take lat/lon axis order by default.
                                                                  EPSG:4326 enforces lon/lat order */
-                                                                /* TODO_OL4 check if map proj is compatible with WFS
+                                                                /* TODO check if map proj is compatible with WFS
                                                                  some versions/impls need always 4326 bbox
                                                                  do on-the-fly reprojection if needed */
                                                                 bbox: bbox,
@@ -939,7 +934,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
                                                             ftLayer.getSource().setState(ol.source.State.LOADING)
 
-                                                            fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(params),
+                                                            return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(params),
                                                                 {method: 'GET'}
                                                             ).then(
                                                                 function (response) {
@@ -963,10 +958,22 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                                                                      }
                                                                      }
                                                                      */
+
+                                                                    // generate fid from properties hash to avoid multiple insertion of same feature
+                                                                    // (when max_features strategy is applied and features have no intrisic ID)
+                                                                    features.forEach(function(feature) {
+                                                                        if (feature.getId() === undefined) {
+                                                                            var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
+                                                                            feature.setId(hashkey);
+                                                                        }
+                                                                    })
+
                                                                     ftLayer
                                                                         .getSource()
                                                                         .addFeatures(features);
                                                                     ftLayer.getSource().setState(ol.source.State.READY);
+
+                                                                    return features.length >= MAX_FEATURES
                                                                 }
                                                             ).catch(function (ex) {
                                                                     ftLayer.getSource().setState(ol.source.State.ERROR);
@@ -984,45 +991,6 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                                                 ftLayer.getSource().set('ftDescr', candidate);
                                                 ftLayer.getSource().getFullExtent = getFTSourceExtent;
 
-
-                                                /* TODO_OL4 : still to integrate : BBOXWithMax
-
-                                                 var wfs_options = {
-                                                 url: url,
-                                                 //headers : {"Content-Type": "application/xml"},
-                                                 params: {
-                                                 request: "GetFeature",
-                                                 service: "WFS",
-                                                 version: ver,
-                                                 typeName: candidate.prefixedName || candidate.name,
-                                                 maxFeatures: MAX_FEATURES,
-                                                 srsName: resolvedSrs,
-                                                 // TODO check capabilities for supported outputFormats
-                                                 //      some impls expose a long-form expression of GML2/3
-                                                 //outputFormat: "GML2"
-                                                 },
-                                                 format: new OpenLayers.Format.GML({
-                                                 featureNS: candidate.featureNS,
-                                                 geometryName: $(geomProps[0]).attr('name')
-                                                 }),
-                                                 formatOptions : {
-                                                 xy: !isLatLon
-                                                 },
-                                                 srsInBBOX : true
-                                                 }
-
-                                                 ftLayer = new OpenLayers.Layer.Vector('WFS', {
-                                                 styleMap: defaultStyleMap,
-                                                 ftDescr: candidate,
-                                                 title: candidate.title,
-                                                 strategies: [new OpenLayers.Strategy.BBOXWithMax({maxFeatures: MAX_FEATURES, ratio: 1})],
-                                                 projection: resolvedSrs,
-                                                 visibility: idx == 0,
-                                                 protocol: new OpenLayers.Protocol.HTTP(wfs_options)
-                                                 });
-                                                 ftLayer.getDataExtent = OpenLayers.Layer.WFSLayer.prototype.getDataExtent
-
-                                                 */
                                             } else {
 
                                                 /* TODO_OL4 implement POST
@@ -1116,7 +1084,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                         var mapLayer;
                         if (useTiling) {
                             mapLayer = new ol.layer.Tile({
-                                title: candidate.Name,
+                                title: candidate.Title || candidate.Name,
                                 visible: idx == 0,
                                 //extent: ,
                                 source: new ol.source.TileWMS({
@@ -1124,8 +1092,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                                     params: {LAYERS: candidate.Name,
                                         TRANSPARENT: true,
                                         VERSION: ver,
-                                        EXCEPTIONS: "INIMAGE"},
-                                    //projection: map ? map.getProjectionObject() : Mercator  /* TODO_OL4 get projection from baseLayer ? */
+                                        EXCEPTIONS: "INIMAGE"}
                                 })
                             })
                         } else {
@@ -1139,7 +1106,6 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                                         TRANSPARENT: true,
                                         VERSION: ver,
                                         EXCEPTIONS: "INIMAGE"},
-                                    //projection: map ? map.getProjectionObject() : Mercator, /* TODO_OL4 get projection from baseLayer ? */
                                     ratio: 1
                                 })
                             })
@@ -1231,23 +1197,6 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                             mapLayer.getSource().updateDimensions(dimensions);
                         }
 
-                        /*
-                         var mapLayer = new OpenLayers.Format.WMTSCapabilities().createLayer(
-                         capas,
-                         {
-                         mlDescr: candidate,
-                         name: candidate.title,
-                         layer: candidate.identifier,
-                         //format: "image/png",  // TODO take format from layer descriptor
-                         isBaseLayer: false,
-                         visibility: idx == 0,
-                         projection : projection,
-                         resolutions: resolutions,
-                         //requestEncoding : "KVP" //TODO is this needed ?
-                         }
-                         );
-                         */
-
                         mapLayer.getSource().set('mlDescr', candidate);
                         mapLayer.getSource().getFullExtent = getWMTSSourceExtent;
 
@@ -1296,7 +1245,6 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
         var geojson = new ol.layer.Vector({
             title: 'GeoJSON',
-            // styleMap: defaultStyleMap, // TODO_OL4
             source: new ol.source.Vector({
                 loader: function(extent, resolution, projection) {
                     // set source as loading before reading the GeoJSON
@@ -1341,7 +1289,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
             function (descriptor) {
 
                 if (descriptor.type == "Feature Layer") {
-                    var newLayer = OL_HELPERS.createArcgisFeatureLayer(layerBaseUrl || url, descriptor, true)
+                    var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/query", descriptor, true)
                     layerProcessor(newLayer)
                 } else if (descriptor.type == "Group Layer") {
                     // TODO intermediate layer
@@ -1349,7 +1297,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                     var isFirst = true
                     $_.each(descriptor.layers, function (layer, idx) {
                         if (!layer.subLayerIds) {
-                            var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/" + layer.id, layer, isFirst)
+                            var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/" + layer.id + "/query", layer, isFirst)
                             layerProcessor(newLayer)
                             isFirst = false
                         }
@@ -1363,85 +1311,77 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
 
     OL_HELPERS.createArcgisFeatureLayer = function (url, descriptor, visible) {
 
-        //TODO fetch layer descriptor to extract extent
-        var esrijson = new OpenLayers.Layer.ArcgisVectorLayer(
-            descriptor.name,
-            {
-                layerDescr: descriptor,
-                projection: EPSG4326,
-                strategies: [new OpenLayers.Strategy.BBOXWithMax({maxFeatures: MAX_FEATURES, ratio: 1})],
-                visibility: visible,
-                styleMap: defaultStyleMap,
-                protocol: new OpenLayers.Protocol.Script({
-                    url: url +   //build ArcGIS Server query string
-                        "/query?dummy=1&" +
-                        //"geometry=-180%2C-90%2C180%2C90&" +
-                        "geometryType=esriGeometryEnvelope&" +
-                        "inSR=4326&" +
-                        "spatialRel=esriSpatialRelIntersects&" +
-                        "outFields=*&" +
-                        "outSR=4326&" +
-                        "returnGeometry=true&" +
-                        "returnIdsOnly=false&" +
-                        "returnCountOnly=false&" +
-                        "returnZ=false&" +
-                        "returnM=false&" +
-                        "returnDistinctValues=false&" +
-                        /*
-                         "where=&" +
-                         "text=&" +
-                         "objectIds=&" +
-                         "time=&" +
-                         "relationParam=&" +
-                         "maxAllowableOffset=&" +
-                         "geometryPrecision=&" +
-                         "orderByFields=&" +
-                         "groupByFieldsForStatistics=&" +
-                         "outStatistics=&" +
-                         "gdbVersion=&" +
-                         */
-                        "f=pjson",
-                    format: new OpenLayers.Format.EsriGeoJSON(),
-                    maxFeatures: 1000,
-                    parseFeatures: function (data) {
-                        return this.format.read(data);
-                    },
-                    filterToParams: function (filter, params) {
-                        var format = new OpenLayers.Format.QueryStringFilter({srsInBBOX: this.srsInBBOX})
-                        var params = format.write(filter, params)
-                        params.geometry = params.bbox
-                        delete params.bbox
+        var format = new ol.format.EsriJSON();
 
-                        return params
-                    }
-                })
-            });
+        var defaultQueryParams = {
+            "dummy" : 1,
+            "geometryType" : "esriGeometryEnvelope",
+            "inSR" : "4326",
+            "spatialRel" : "esriSpatialRelIntersects",
+            "outFields" : "*",
+            "outSR" : "4326",
+            "returnGeometry" : true,
+            "returnIdsOnly" : false,
+            "returnCountOnly" : false,
+            "returnZ" : false,
+            "returnM" : false,
+            "returnDistinctValues" : false,
+            "f" : "pjson"
+        }
 
-        return esrijson
+        var layer = new ol.layer.Vector({
+            title: descriptor.name,
+            source: new ol.source.Vector({
+                loader: function (extent, resolution, mapProjection) {
+                    var outSrs = OL_HELPERS.EPSG4326;
+
+                    var queryParams = _.extend(
+                        {},
+                        defaultQueryParams,
+                        {
+                            "geometry" : extent.join(','),
+                            "inSR" : mapProjection.getCode().split(':').pop(),
+                            "outSR" : outSrs.getCode().split(':').pop()
+                        }
+                    )
+
+                    layer.getSource().setState(ol.source.State.LOADING)
+
+                    return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(queryParams),
+                        {method: 'GET'}
+                    ).then(
+                        function (response) {
+                            return response.text();
+                        }
+                    ).then(
+                        function (text) {
+
+                            var features = format.readFeatures(text, {featureProjection: mapProjection, dataProjection: outSrs});
+
+                            layer
+                                .getSource()
+                                .addFeatures(features);
+                            layer.getSource().setState(ol.source.State.READY);
+
+                            //return features.length >= MAX_FEATURES
+                        }
+                    ).catch(function (ex) {
+                            layer.getSource().setState(ol.source.State.ERROR);
+                            console.warn("ArcGIS GetFeatures failed");
+                            console.warn(ex);
+                        })
+                },
+                strategy: ol.loadingstrategy.bbox
+            }),
+            visible : visible
+        });
+        // override getExtent to take advertised bbox into account first
+        layer.getSource().set('arcgisDescr', descriptor);
+        layer.getSource().getFullExtent = getArcGISVectorExtent;
+
+        return layer;
     }
 
-
-    OL_HELPERS.displayFeatureInfo = function (map, layer, info, pixel) {
-        info.css({
-            left: pixel[0] + 'px',
-            top: (pixel[1] - 15) + 'px'
-        });
-        map.getFeatures({
-            pixel: pixel,
-            layers: [layer],
-            success: function (layerFeatures) {
-                var feature = layerFeatures[0][0];
-                if (feature) {
-                    info.tooltip('hide')
-                        .attr('data-original-title', feature.get('name'))
-                        .tooltip('fixTitle')
-                        .tooltip('show');
-                } else {
-                    info.tooltip('hide');
-                }
-            }
-        });
-    };
 
     OL_HELPERS.createLayerFromConfig = function(mapConfig, isBaseLayer, callback) {
         var urls;
@@ -1467,22 +1407,29 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
             urls = mapConfig['url'];
             if (!urls)
                 throw 'TMS URL must be set when using TMS Map type';
-            var projection = mapConfig['srs'] ? ol.proj.get(mapConfig['srs']) : OL_HELPERS.Mercator // force SRS to 3857 if using OSM baselayer
-            var maxExtent = mapConfig['extent'] && eval(mapConfig['extent'])
+            var projection = mapConfig['srs'] ? ol.proj.get(mapConfig['srs']) : OL_HELPERS.Mercator
+            var extent = mapConfig['extent'] && eval(mapConfig['extent'])
 
-            var baseMapLayer = new OpenLayers.Layer.TMS('Base Layer', urls, {
-                isBaseLayer: isBaseLayer,
-                //wrapDateLine: true,
-                projection: projection,
-                maxExtent: maxExtent,
-                attribution: mapConfig.attribution,
-                // take lower left corner as default origin
-                tileOrigin: new OpenLayers.LonLat(maxExtent[0], maxExtent[1]),
-                //units:"m",
-                layername:mapConfig['layername'],
-                type:'png',
-                resolutions: mapConfig['resolutions'] && eval(mapConfig['resolutions'])
-                //zoomOffset: 5
+            var resolutions = mapConfig['resolutions'] && eval(mapConfig['resolutions'])
+
+            var tileGrid = resolutions && new ol.tilegrid.TileGrid({
+                extent: extent,
+                resolutions: resolutions,
+                //origin: [extent[0], extent[1]],
+                tileSize: [256, 256]
+            });
+
+            var layerName = mapConfig['layername'];
+            var baseMapLayer = new ol.layer.Tile({
+                title: mapConfig['title'],
+                type: isBaseLayer?'base':undefined,
+                extent: extent,
+                source: new ol.source.XYZ({
+                    projection: projection,
+                    tileGrid: tileGrid,
+                    //tilePixelRatio: tilePixelRatio,
+                    url: urls + '/1.0.0/' + layerName + '/{z}/{x}/{-y}.png'
+                })
             });
 
             callback (baseMapLayer);
@@ -1491,20 +1438,13 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
             urls = mapConfig['url'];
             if (!urls)
                 throw 'URL must be set when using XYZ type';
-            /* TODO_OL4 should ${x} be supported ?
-            if (urls.indexOf('${x}') === -1) {
-                urls = urls.replace('{x}', '${x}').replace('{y}', '${y}').replace('{z}', '${z}');
-            }
-            */
+
             var baseMapLayer = new ol.layer.Tile(
                 {title: mapConfig['title'],
                  type: isBaseLayer?'base':undefined, // necessary for ol3-layerswitcher
                  source:new ol.source.XYZ({
                     url: urls,
-                     /* TODO_OL4 what to do with this?
-                    isBaseLayer: isBaseLayer,
-                    sphericalMercator: true,
-                    wrapDateLine: true,
+                     /* TODO
                     attribution: mapConfig.attribution
                     */
                 })
@@ -1519,14 +1459,8 @@ ol.proj.addProjection(new ol.proj.EPSG4326_('EPSG:4326:LONLAT', 'enu'));
                     layer.set('type', 'base');
                     mapConfig['dimensions'] && layer.getSource().updateDimensions(mapConfig['dimensions']);
                     mapConfig['title'] && layer.set('title', mapConfig['title']);
-                    /* TODO_OL4
+                    /* TODO
                     layer.options.attribution = mapConfig.attribution
-                    layer.maxExtent = layer.mlDescr.bounds.clone().transform(OL_HELPERS.EPSG4326, layer.projection)
-
-                    // force projection to be 4326 instead of CRS84, as tile matrix failed to be found properly otherwise
-                    if (layer.projection.projCode == "OGC:CRS84")
-                        layer.projection = OL_HELPERS.EPSG4326
-
 */
                     callback (layer);
                 },

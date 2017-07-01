@@ -15,7 +15,7 @@
   ],
   "dependencies": {
     "underscore": ">=1.4.2",
-    "openlayers": "https://github.com/openlayers/openlayers/releases/download/v4.0.1/v4.0.1-dist.zip",
+    "openlayers": "https://github.com/openlayers/openlayers/releases/download/v4.2.0/v4.2.0-dist.zip",
     "fetch": "^2.0.3"
   }
 }

@@ -35,58 +35,29 @@
 
 
 
- #data-preview .olControlLayerSwitcher {
-     color: #085871;
-
-     border: 1px solid #464646;
-     border-right: none;
-     -webkit-border-radius: 3px 3px 0 0;
-     -moz-border-radius: 3px 3px 0 0;
-     border-radius: 3px 3px 0 0;
-
-     -webkit-box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
-     box-shadow: 0 2px 2px 0 rgba(0, 0, 0, 0.2);
+ #data-preview .ol-viewport .layer-switcher {
  }
 
- #data-preview .olControlLayerSwitcher {
-     max-height: 90%;
-     z-index: 1010;
+ #data-preview .ol-viewport .layer-switcher .stacked-layers {
+     right: 14px;
  }
 
- #data-preview .olControlLayerSwitcher label {
+
+ #data-preview .ol-viewport .layer-switcher .header {
+     padding-right: 43px;
+ }
+
+ #data-preview .ol-viewport .layer-switcher label {
      display: inline;
      margin-bottom: 5px;
-     color: black;
+     color: white;
  }
 
- #data-preview .olControlLayerSwitcher label:before {
+ #data-preview .ol-viewport .layer-switcher label:before {
      content:" ";
  }
 
- #data-preview .olControlLayerSwitcher .layersDiv {
-     padding-top: 5px;
-     padding-left: 10px;
-     padding-bottom: 5px;
-     padding-right: 10px;
-     background-color: #ededed;
- }
-
- #data-preview .olControlLayerSwitcher .dataLayersDiv {
-     max-height: 350px; /* this must be coherent with the map height */
-     overflow-y: auto;
- }
-
- #data-preview .olControlAttribution {
-     bottom: 5px;
- }
-
-
- #data-preview .dataLayersDiv .labelSpan {
-     font-size: 80%;
- }
-
-
-
-#basemapSelector {
-     width: 100%;
+ #data-preview .ol-viewport .layer-switcher .layer-list ul {
+     list-style: none;
+     margin: 0;
  }

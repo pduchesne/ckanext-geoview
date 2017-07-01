@@ -9,17 +9,32 @@ ol.control.HilatsLayerSwitcher = function(opt_options) {
     this.mapListeners = [];
 
     var _this = this;
-    var element = $("<div class='ol-unselectable ol-control layer-switcher'></div>").hover(
+
+    this.parentElement = $("<div class='layer-switcher'></div>").hover(
         function() {_this.showPanel()},
         function() {_this.hidePanel()}
-    )[0];
-    $("<button></button>").appendTo(element);
-    this.panel = $("<div class='panel'></div>").appendTo(element).hide()[0];
+    )
+
+    this.header = $("<div class='header'></div>")
+
+    var element = $("<div class='ol-unselectable ol-control layer-list'></div>");
+
+    var progressIndicator =  $("<div class='stacked-layers'>" +
+                                "<div class='stacked-layer layer-1'/>" +
+                                "<div class='stacked-layer layer-2'/>" +
+                                "<div class='stacked-layer layer-3'/></div>")
+    this.parentElement
+        .append(progressIndicator)
+        .append(this.header)
+        .append(element);
+
+
+    this.panel = $("<div class='panel'></div>").appendTo(element)[0];
 
     ol.control.HilatsLayerSwitcher.enableTouchScroll_(this.panel);
 
     ol.control.Control.call(this, {
-        element: element,
+        element: this.parentElement[0],
         target: options.target
     });
 
@@ -32,16 +47,20 @@ ol.inherits(ol.control.HilatsLayerSwitcher, ol.control.Control);
  */
 ol.control.HilatsLayerSwitcher.prototype.showPanel = function() {
     if (! $(this.panel).is(":visible")) {
-        $(this.panel).show()
+        this.parentElement.addClass('active');
         this.renderPanel();
     }
+};
+
+ol.control.HilatsLayerSwitcher.prototype.isLoading = function(toggle) {
+    $(this.element).find('.stacked-layer').toggleClass('animated', toggle)
 };
 
 /**
  * Hide the layer panel.
  */
 ol.control.HilatsLayerSwitcher.prototype.hidePanel = function() {
-    $(this.panel).hide()
+    this.parentElement.removeClass('active');
 };
 
 /**
@@ -51,11 +70,13 @@ ol.control.HilatsLayerSwitcher.prototype.renderPanel = function() {
 
     this.ensureTopVisibleBaseLayerShown_();
 
-    $(this.panel).empty()
+    $(this.header).empty()
         .append(this.renderBaseLayerSelector());
 
     this.renderLayersList(this.getMap().getLayers().getArray().slice().reverse())
-        .appendTo(this.panel)
+        .appendTo($(this.panel).empty())
+
+    $(this.header).find("select").width($(this.panel).width() - 40)
 
 };
 
@@ -78,7 +99,7 @@ ol.control.HilatsLayerSwitcher.prototype.renderBaseLayerSelector = function() {
 };
 
 ol.control.HilatsLayerSwitcher.prototype.renderBaseLayer = function(baselayer) {
-    var $select = $(this.panel).find(".baseLayerSelector select");
+    var $select = $(this.header).find(".baseLayerSelector select");
 
     $select.append(
         $('<option/>', {value: baselayer.ol_uid})

@@ -178,17 +178,20 @@
 
                 var createMapFun = function(baseMapLayer) {
 
+                    var layerSwitcher = new ol.control.HilatsLayerSwitcher();
+
                     var options = {
                         target: $('.map')[0],
                         layers: [baseMapLayer],
                         controls: [
                             new ol.control.ZoomSlider(),
                             new ol.control.MousePosition(),
-                            new ol.control.HilatsLayerSwitcher({
-                                //tipLabel: 'Légende' // Optional label for button
-                            })
+                            layerSwitcher
                         ],
-                        loadingDiv: $("<div class='loader' style='font-size: 10px; margin: 40px 40px; z-index: 3000; position: absolute; top: 0px;'></div>")[0],
+                        loadingDiv: false,
+                        loadingListener: function(isLoading) {
+                            layerSwitcher.isLoading(isLoading)
+                        },
                         overlays: overlays,
                         view: new ol.View({
                             // projection attr should be set when creating a baselayer

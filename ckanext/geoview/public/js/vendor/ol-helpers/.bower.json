@@ -14,15 +14,15 @@
   ],
   "dependencies": {
     "underscore": ">=1.4.2",
-    "openlayers": "https://github.com/openlayers/openlayers/releases/download/v4.0.1/v4.0.1-dist.zip",
+    "openlayers": "https://github.com/openlayers/openlayers/releases/download/v4.2.0/v4.2.0-dist.zip",
     "fetch": "^2.0.3"
   },
   "homepage": "https://github.com/pduchesne/ol-helpers",
-  "_release": "1eef389352",
+  "_release": "601df74893",
   "_resolution": {
     "type": "branch",
     "branch": "ol4",
-    "commit": "1eef3893523ef2c92fd4d3799a689167a6d2be82"
+    "commit": "601df748938aa2c99f721272c760607cb35a7f2d"
   },
   "_source": "git://github.com/pduchesne/ol-helpers.git",
   "_target": "ol4",
