@@ -1,16 +1,21 @@
-var globals = require('./global');
-var parseProj = require('./projString');
-var wkt = require('./wkt');
+import globals from './global';
+import parseProj from './projString';
+import wkt from 'wkt-parser';
 
 function defs(name) {
   /*global console*/
   var that = this;
   if (arguments.length === 2) {
-    if (arguments[1][0] === '+') {
-      defs[name] = parseProj(arguments[1]);
-    }
-    else {
-      defs[name] = wkt(arguments[1]);
+    var def = arguments[1];
+    if (typeof def === 'string') {
+      if (def.charAt(0) === '+') {
+        defs[name] = parseProj(arguments[1]);
+      }
+      else {
+        defs[name] = wkt(arguments[1]);
+      }
+    } else {
+      defs[name] = def;
     }
   }
   else if (arguments.length === 1) {
@@ -25,7 +30,9 @@ function defs(name) {
       });
     }
     else if (typeof name === 'string') {
-
+      if (name in defs) {
+        return defs[name];
+      }
     }
     else if ('EPSG' in name) {
       defs['EPSG:' + name.EPSG] = name;
@@ -45,4 +52,4 @@ function defs(name) {
 
 }
 globals(defs);
-module.exports = defs;
+export default defs;

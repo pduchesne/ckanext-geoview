@@ -1,17 +1,17 @@
-var defs = require('./defs');
-var wkt = require('./wkt');
-var projStr = require('./projString');
+import defs from './defs';
+import wkt from 'wkt-parser';
+import projStr from './projString';
 function testObj(code){
   return typeof code === 'string';
 }
 function testDef(code){
   return code in defs;
 }
+ var codeWords = ['PROJECTEDCRS', 'PROJCRS', 'GEOGCS','GEOCCS','PROJCS','LOCAL_CS', 'GEODCRS', 'GEODETICCRS', 'GEODETICDATUM', 'ENGCRS', 'ENGINEERINGCRS']; 
 function testWKT(code){
-  var codeWords = ['GEOGCS','GEOCCS','PROJCS','LOCAL_CS'];
-  return codeWords.reduce(function(a,b){
-    return a+1+code.indexOf(b);
-  },0);
+  return codeWords.some(function (word) {
+    return code.indexOf(word) > -1;
+  });
 }
 function testProj(code){
   return code[0] === '+';
@@ -22,10 +22,10 @@ function parse(code){
     if (testDef(code)) {
       return defs[code];
     }
-    else if (testWKT(code)) {
+    if (testWKT(code)) {
       return wkt(code);
     }
-    else if (testProj(code)) {
+    if (testProj(code)) {
       return projStr(code);
     }
   }else{
@@ -33,4 +33,4 @@ function parse(code){
   }
 }
 
-module.exports = parse;
+export default parse;

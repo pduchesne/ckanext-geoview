@@ -1,18 +1,28 @@
-var D2R = 0.01745329251994329577;
-var tmerc = require('./tmerc');
-exports.dependsOn = 'tmerc';
-exports.init = function() {
-  if (!this.zone) {
-    return;
+import adjust_zone from '../common/adjust_zone';
+import etmerc from './etmerc';
+export var dependsOn = 'etmerc';
+import {D2R} from '../constants/values';
+
+
+export function init() {
+  var zone = adjust_zone(this.zone, this.long0);
+  if (zone === undefined) {
+    throw new Error('unknown utm zone');
   }
   this.lat0 = 0;
-  this.long0 = ((6 * Math.abs(this.zone)) - 183) * D2R;
+  this.long0 =  ((6 * Math.abs(zone)) - 183) * D2R;
   this.x0 = 500000;
   this.y0 = this.utmSouth ? 10000000 : 0;
   this.k0 = 0.9996;
 
-  tmerc.init.apply(this);
-  this.forward = tmerc.forward;
-  this.inverse = tmerc.inverse;
+  etmerc.init.apply(this);
+  this.forward = etmerc.forward;
+  this.inverse = etmerc.inverse;
+}
+
+export var names = ["Universal Transverse Mercator System", "utm"];
+export default {
+  init: init,
+  names: names,
+  dependsOn: dependsOn
 };
-exports.names = ["Universal Transverse Mercator System", "utm"];

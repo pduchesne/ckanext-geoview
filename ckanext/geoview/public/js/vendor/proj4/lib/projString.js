@@ -1,24 +1,26 @@
-var D2R = 0.01745329251994329577;
-var PrimeMeridian = require('./constants/PrimeMeridian');
-module.exports = function(defData) {
-  var self = {};
+import {D2R} from './constants/values';
+import PrimeMeridian from './constants/PrimeMeridian';
+import units from './constants/units';
+import match from './match';
 
-  var paramObj = {};
-  defData.split("+").map(function(v) {
+export default function(defData) {
+  var self = {};
+  var paramObj = defData.split('+').map(function(v) {
     return v.trim();
   }).filter(function(a) {
     return a;
-  }).forEach(function(a) {
-    var split = a.split("=");
+  }).reduce(function(p, a) {
+    var split = a.split('=');
     split.push(true);
-    paramObj[split[0].toLowerCase()] = split[1];
-  });
+    p[split[0].toLowerCase()] = split[1];
+    return p;
+  }, {});
   var paramName, paramVal, paramOutname;
   var params = {
     proj: 'projName',
     datum: 'datumCode',
     rf: function(v) {
-      self.rf = parseFloat(v, 10);
+      self.rf = parseFloat(v);
     },
     lat_0: function(v) {
       self.lat0 = v * D2R;
@@ -48,16 +50,22 @@ module.exports = function(defData) {
       self.longc = v * D2R;
     },
     x_0: function(v) {
-      self.x0 = parseFloat(v, 10);
+      self.x0 = parseFloat(v);
     },
     y_0: function(v) {
-      self.y0 = parseFloat(v, 10);
+      self.y0 = parseFloat(v);
     },
     k_0: function(v) {
-      self.k0 = parseFloat(v, 10);
+      self.k0 = parseFloat(v);
     },
     k: function(v) {
-      self.k0 = parseFloat(v, 10);
+      self.k0 = parseFloat(v);
+    },
+    a: function(v) {
+      self.a = parseFloat(v);
+    },
+    b: function(v) {
+      self.b = parseFloat(v);
     },
     r_a: function() {
       self.R_A = true;
@@ -70,17 +78,25 @@ module.exports = function(defData) {
     },
     towgs84: function(v) {
       self.datum_params = v.split(",").map(function(a) {
-        return parseFloat(a, 10);
+        return parseFloat(a);
       });
     },
     to_meter: function(v) {
-      self.to_meter = parseFloat(v, 10);
+      self.to_meter = parseFloat(v);
+    },
+    units: function(v) {
+      self.units = v;
+      var unit = match(units, v);
+      if (unit) {
+        self.to_meter = unit.to_meter;
+      }
     },
     from_greenwich: function(v) {
       self.from_greenwich = v * D2R;
     },
     pm: function(v) {
-      self.from_greenwich = (PrimeMeridian[v] ? PrimeMeridian[v] : parseFloat(v, 10)) * D2R;
+      var pm = match(PrimeMeridian, v);
+      self.from_greenwich = (pm ? pm : parseFloat(v)) * D2R;
     },
     nadgrids: function(v) {
       if (v === '@null') {
@@ -116,4 +132,4 @@ module.exports = function(defData) {
     self.datumCode = self.datumCode.toLowerCase();
   }
   return self;
-};
+}
