@@ -8,20 +8,23 @@
   ],
   "main": [
     "EsriGeoJSON.js",
-    "ol-helpers.js"
+    "ol-helpers.js",
+    "ol-layer-switcher.js",
+    "ol-helpers.css"
   ],
   "dependencies": {
     "underscore": ">=1.4.2",
-    "openlayers2": "pduchesne/ol2-bower#2.14.hilats"
+    "openlayers": "https://github.com/openlayers/openlayers/releases/download/v4.2.0/v4.2.0-dist.zip",
+    "fetch": "^2.0.3"
   },
   "homepage": "https://github.com/pduchesne/ol-helpers",
-  "_release": "1eb74174ff",
+  "_release": "601df74893",
   "_resolution": {
     "type": "branch",
-    "branch": "master",
-    "commit": "1eb74174ffb97ac69e77b07b372f19c652255302"
+    "branch": "ol4",
+    "commit": "601df748938aa2c99f721272c760607cb35a7f2d"
   },
   "_source": "git://github.com/pduchesne/ol-helpers.git",
-  "_target": "*",
+  "_target": "ol4",
   "_originalSource": "pduchesne/ol-helpers"
 }

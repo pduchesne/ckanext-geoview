@@ -21,7 +21,7 @@ boolean_validator = p.toolkit.get_validator('boolean_validator')
 log = getLogger(__name__)
 
 GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'esrigeojson',
-                   'gft', 'arcgis_rest', 'wmts']
+                   'gft', 'arcgis_rest', 'wmts', 'esri rest']
 
 
 def get_proxified_service_url(data_dict):
@@ -159,7 +159,7 @@ class OLGeoView(GeoViewBase):
         return correct_format and can_preview_from_domain
 
     def view_template(self, context, data_dict):
-        return 'dataviewer/openlayers2.html'
+        return 'dataviewer/openlayers.html'
 
     def form_template(self, context, data_dict):
         return 'dataviewer/openlayers_form.html'
@@ -171,7 +171,7 @@ class OLGeoView(GeoViewBase):
         return self.can_view(data_dict)
 
     def preview_template(self, context, data_dict):
-        return 'dataviewer/openlayers2.html'
+        return 'dataviewer/openlayers.html'
 
     # Common for IResourceView and IResourcePreview
 

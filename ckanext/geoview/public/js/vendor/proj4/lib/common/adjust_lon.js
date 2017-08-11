@@ -1,6 +1,7 @@
-var TWO_PI = Math.PI * 2;
-var sign = require('./sign');
 
-module.exports = function(x) {
-  return (Math.abs(x) < Math.PI) ? x : (x - (sign(x) * TWO_PI));
-};
+import {TWO_PI, SPI} from '../constants/values';
+import sign from './sign';
+
+export default function(x) {
+  return (Math.abs(x) <= SPI) ? x : (x - (sign(x) * TWO_PI));
+}

@@ -1,7 +1,9 @@
-var pj_mlfn = require("./pj_mlfn");
-var EPSLN = 1.0e-10;
+import pj_mlfn from "./pj_mlfn";
+import {EPSLN} from '../constants/values';
+
 var MAX_ITER = 20;
-module.exports = function(arg, es, en) {
+
+export default function(arg, es, en) {
   var k = 1 / (1 - es);
   var phi = arg;
   for (var i = MAX_ITER; i; --i) { /* rarely goes over 2 iterations */
@@ -17,4 +19,4 @@ module.exports = function(arg, es, en) {
   }
   //..reportError("cass:pj_inv_mlfn: Convergence error");
   return phi;
-};
+}
