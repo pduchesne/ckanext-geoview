@@ -75,6 +75,17 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         return !isNaN(parseFloat(n)) && isFinite(n);
     }
 
+    // Override decimal parsers, as some capabilities use commas as decimal separator
+    // (e.g. http://geoservices.wallonie.be/arcgis/services/EAU/ALEA_2016/MapServer/WMSServer)
+    var originalReadDecimal = ol.format.XSD.readDecimalString;
+    ol.format.XSD.readDecimalString = function(string) {
+        if (string) {
+            string = string.replace(',', '.');
+        }
+        return originalReadDecimal(string);
+    };
+
+
     ol.Map.prototype.addLayerWithExtent = function (layer) {
         this.addLayer(layer)
 
@@ -300,38 +311,54 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
 
     OL_HELPERS.FeatureInfoOverlay = function(options) {
         ol.Overlay.call(this, options);
+        this.filter = options.filter;
+        this.renderFeaturePopup = options.renderFeaturePopup || function(features, displayDetails) {
+            var htmlContent;
+
+            if (displayDetails) {
+                var feature = features[0];
+
+                var layerTitle = feature && feature.layer && feature.layer.get('title')
+                htmlContent = "<div class='name'>" + layerTitle +" : <b>"+ (feature.get('name') || feature.getId()) + "</b></div>";
+
+                htmlContent += "<table>";
+                feature.getKeys().forEach(function(prop) {
+                    htmlContent += "<tr><td>" + prop + "</td><td>" + feature.get(prop) + "</td></tr></div>"
+                })
+                htmlContent += "</table>"
+            } else {
+                htmlContent = "";
+                features.forEach(function(feature) {
+                    var layerTitle = feature && feature.layer && feature.layer.get('title')
+                    htmlContent += "<div class='name'>" + layerTitle +" : <b>"+ (feature.get('name') || feature.getId()) + "</b></div>";
+                })
+            }
+
+            return htmlContent;
+        }
+        this.computePosition = options.computePosition || function(features, evt) {
+            // default positioning : take current cursor pos
+            return evt.coordinate;
+        }
+
         this.hoveredFeatures = [];
     };
     ol.inherits(OL_HELPERS.FeatureInfoOverlay, ol.Overlay);
 
     OL_HELPERS.FeatureInfoOverlay.prototype.setFeatures = function(features, displayDetails) {
         if (features.length == 0) {
-            this.setPosition(undefined);
+            //this.setPosition(undefined);
             return;
         }
 
-        var htmlContent;
+        var htmlContent = this.renderFeaturePopup(features, displayDetails);
 
-        if (displayDetails) {
-            var feature = features[0];
-
-            var layerTitle = feature && feature.layer && feature.layer.get('title')
-            htmlContent = "<div class='name'>" + layerTitle +" : <b>"+ (feature.get('name') || feature.getId()) + "</b></div>";
-
-            htmlContent += "<table>";
-            feature.getKeys().forEach(function(prop) {
-                htmlContent += "<tr><td>" + prop + "</td><td>" + feature.get(prop) + "</td></tr></div>"
-            })
-            htmlContent += "</table>"
+        if (typeof htmlContent === 'string') {
+            $(this.getElement()).find('.popupContent').html(htmlContent);
         } else {
-            htmlContent = "";
-            features.forEach(function(feature) {
-                var layerTitle = feature && feature.layer && feature.layer.get('title')
-                htmlContent += "<div class='name'>" + layerTitle +" : <b>"+ (feature.get('name') || feature.getId()) + "</b></div>";
-            })
+            $(this.getElement()).find('.popupContent').empty().append(htmlContent);
         }
 
-        $(this.getElement()).find('.popupContent').html(htmlContent);
     }
 
     OL_HELPERS.FeatureInfoOverlay.prototype.handleMapChanged = function() {
@@ -345,7 +372,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
                 var changed = false;
                 var features = [];
                 map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
-                    if (feature) // sometimes feature is undefined (?!)
+                    if (feature && (!_this.filter || _this.filter(feature, layer))) // sometimes feature is undefined (?!)
                         features.push(feature);
                     feature.layer = layer
                     if (_this.hoveredFeatures.indexOf(feature)<0) {
@@ -365,7 +392,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
                 }
 
                 if (_this.hoveredFeatures.length > 0) {
-                    _this.setPosition(evt.coordinate);
+                    _this.setPosition(_this.computePosition(features, evt));
                 }
 
             });
@@ -600,6 +627,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         return kml;
     }
 
+    /* TODO_OL4 */
     OL_HELPERS.createGFTLayer = function (tableId, GoogleAPIKey) {
         return new OpenLayers.Layer.Vector(
             "GFT", {
@@ -648,6 +676,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
             })
     }
 
+    /* TODO_OL4 */
     OL_HELPERS.createGMLLayer = function (url) {
 
         var gml = new OpenLayers.Layer.Vector("GML", {
@@ -1062,65 +1091,74 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         capaUrl = OL_HELPERS.cleanOGCUrl(capaUrl)
         getMapUrl = OL_HELPERS.cleanOGCUrl(getMapUrl)
 
+
         parseWMSCapas(
             capaUrl,
             function (capas) {
-
-                var candidates = capas.Capability.Layer.Layer
-                if (layerName) candidates = candidates.filter(function (layer) {
-                    return layer.Name == layerName
-                })
 
                 var ver = capas.version
 
                 var deferredLayers = []
 
-                $_.each(candidates, function (candidate, idx) {
+                var isFirst = true;
+                var processLayerCandidate = function (candidate) {
 
-                    var deferredLayer = $.Deferred()
-                    deferredLayers.push(deferredLayer)
+                    if (candidate.Name && (!layerName || candidate.Name == layerName)) {
+                        var deferredLayer = $.Deferred()
+                        deferredLayers.push(deferredLayer)
 
-                    try {
-                        var mapLayer;
-                        if (useTiling) {
-                            mapLayer = new ol.layer.Tile({
-                                title: candidate.Title || candidate.Name,
-                                visible: idx == 0,
-                                //extent: ,
-                                source: new ol.source.TileWMS({
-                                    url: getMapUrl,
-                                    params: {LAYERS: candidate.Name,
-                                        TRANSPARENT: true,
-                                        VERSION: ver,
-                                        EXCEPTIONS: "INIMAGE"}
+                        try {
+                            var mapLayer;
+                            if (useTiling) {
+                                mapLayer = new ol.layer.Tile({
+                                    title: candidate.Title || candidate.Name,
+                                    visible: isFirst,
+                                    //extent: ,
+                                    source: new ol.source.TileWMS({
+                                        url: getMapUrl,
+                                        params: {LAYERS: candidate.Name,
+                                            TRANSPARENT: true,
+                                            VERSION: ver,
+                                            EXCEPTIONS: "INIMAGE"}
+                                    })
                                 })
-                            })
-                        } else {
-                            mapLayer = new ol.layer.Image({
-                                title: candidate.Name,
-                                visible: idx == 0,
-                                //extent: ,
-                                source: new ol.source.ImageWMS({
-                                    url: getMapUrl,
-                                    params: {LAYERS: candidate.Name,
-                                        TRANSPARENT: true,
-                                        VERSION: ver,
-                                        EXCEPTIONS: "INIMAGE"},
-                                    ratio: 1
+                            } else {
+                                mapLayer = new ol.layer.Image({
+                                    title: candidate.Name,
+                                    visible: isFirst,
+                                    //extent: ,
+                                    source: new ol.source.ImageWMS({
+                                        url: getMapUrl,
+                                        params: {LAYERS: candidate.Name,
+                                            TRANSPARENT: true,
+                                            VERSION: ver,
+                                            EXCEPTIONS: "INIMAGE"},
+                                        ratio: 1
+                                    })
                                 })
-                            })
+                            }
+                            isFirst = false;
+
+                            mapLayer.getSource().set('mlDescr', candidate);
+                            mapLayer.getSource().getFullExtent = getWMSSourceExtent;
+
+                            layerProcessor(mapLayer)
+
+                            deferredLayer.resolve(mapLayer)
+                        } catch (err) {
+                            deferredLayer.reject(err)
                         }
+                    } else if (candidate.Layer) {
+                        // layer contains nested layers
 
-                        mapLayer.getSource().set('mlDescr', candidate);
-                        mapLayer.getSource().getFullExtent = getWMSSourceExtent;
+                        //TODO create layer groups in switcher
 
-                        layerProcessor(mapLayer)
-
-                        deferredLayer.resolve(mapLayer)
-                    } catch (err) {
-                        deferredLayer.reject(err)
+                        $_.each(candidate.Layer, processLayerCandidate)
                     }
-                })
+
+                }
+
+                $_.each(capas.Capability.Layer.Layer, processLayerCandidate)
 
                 $.when.apply($, deferredLayers).then(function() {
                     deferredResult.resolve(deferredLayers)
@@ -1260,7 +1298,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         return geojson;
     }
 
-
+    /* TODO_OL4 */
     OL_HELPERS.createEsriGeoJSONLayer = function (url) {
 
         var esrijson = new OpenLayers.Layer.Vector(
@@ -1358,6 +1396,15 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
 
                             var features = format.readFeatures(text, {featureProjection: mapProjection, dataProjection: outSrs});
 
+                            // generate fid from properties hash to avoid multiple insertion of same feature
+                            // (when max_features strategy is applied and features have no intrisic ID)
+                            features.forEach(function(feature) {
+                                if (feature.getId() === undefined) {
+                                    var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
+                                    feature.setId(hashkey);
+                                }
+                            })
+
                             layer
                                 .getSource()
                                 .addFeatures(features);
@@ -1388,17 +1435,19 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         var attribution;
 
 
-        if (mapConfig.type == 'osm') {
+        if (mapConfig.type == 'OSM') {
+            urls = mapConfig['url'];
 
-            var baseMapLayer = new OpenLayers.Layer.OSM(
-                null,
-                null,
-                {
-                    title: 'OSM Base Layer',
-                    isBaseLayer: isBaseLayer,
-                    transitionEffect: 'resize'
-                }
-            );
+            var baseMapLayer = new ol.layer.Tile(
+                {title: mapConfig['title'],
+                    type: isBaseLayer?'base':undefined, // necessary for ol3-layerswitcher
+                    source:new ol.source.OSM({
+                        url: urls,
+                        /* TODO
+                       attribution: mapConfig.attribution
+                       */
+                    })
+                });
 
             callback (baseMapLayer);
 

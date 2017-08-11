@@ -7,7 +7,6 @@
     "web"
   ],
   "main": [
-    "EsriGeoJSON.js",
     "ol-helpers.js",
     "ol-layer-switcher.js",
     "ol-helpers.css"
@@ -18,11 +17,11 @@
     "fetch": "^2.0.3"
   },
   "homepage": "https://github.com/pduchesne/ol-helpers",
-  "_release": "601df74893",
+  "_release": "7893871847",
   "_resolution": {
     "type": "branch",
     "branch": "ol4",
-    "commit": "601df748938aa2c99f721272c760607cb35a7f2d"
+    "commit": "789387184793189388af46fbc815adca804f3a96"
   },
   "_source": "git://github.com/pduchesne/ol-helpers.git",
   "_target": "ol4",

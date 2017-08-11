@@ -8,7 +8,6 @@
     "web"
   ],
   "main": [
-    "EsriGeoJSON.js",
     "ol-helpers.js",
     "ol-layer-switcher.js",
     "ol-helpers.css"
