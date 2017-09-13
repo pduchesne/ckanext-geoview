@@ -347,7 +347,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
 
     OL_HELPERS.FeatureInfoOverlay.prototype.setFeatures = function(features, displayDetails) {
         if (features.length == 0) {
-            //this.setPosition(undefined);
+            this.setPosition(undefined);
             return;
         }
 
@@ -458,7 +458,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         var params = {f: "pjson"};
 
         fetch(url + (url.indexOf('?')>=0?'&':'?') + kvp2string(params),
-            {method:'GET'}
+            {method:'GET', credentials: 'include'}
         ).then(
             function(response) {
                 return response.text();
@@ -482,7 +482,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
             REQUEST: "GetCapabilities"
         }
         fetch(url + (url.indexOf('?')>=0?'&':'?') + kvp2string(params),
-            {method:'GET'}
+            {method:'GET', credentials: 'include'}
         ).then(
             function(response) {
                 return response.text();
@@ -507,7 +507,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
             VERSION: ver
         }
         fetch(url + (url.indexOf('?')>=0?'&':'?') + kvp2string(params),
-            {method:'GET'}
+            {method:'GET', credentials: 'include'}
         ).then(
             function(response) {
                 return response.text();
@@ -530,7 +530,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
             REQUEST: "GetCapabilities"
         }
         fetch(url + (url.indexOf('?')>=0?'&':'?') + kvp2string(params),
-              {method:'GET'}
+              {method:'GET', credentials: 'include'}
         ).then(
             function(response) {
                 return response.text();
@@ -556,7 +556,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         };
 
         fetch(url + (url.indexOf('?')>=0?'&':'?') + kvp2string(params),
-            {method:'GET'}
+            {method:'GET', credentials: 'include'}
         ).then(
             function(response) {
                 return response.text();
@@ -712,28 +712,28 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
     OL_HELPERS.parseWfsCapabilities = function(xmlDoc) {
         var $capas = $(xmlDoc);
 
-        var ver = $capas.find('WFS_Capabilities').attr('version');
-        var featureTypes = $capas.find('FeatureTypeList').find('FeatureType');
+        var ver = $($capas[0].getElementsByTagNameNS('*', 'WFS_Capabilities')).attr('version');
+        var featureTypes = $($capas[0].getElementsByTagNameNS('*', 'FeatureType'));
         featureTypes = featureTypes.get().map(function (featureType, idx) {
             var $featureType = $(featureType);
 
             var bbox;
             // let's be lenient and look for latlonbbox or wgs84bbox regardless of advertised version
-            var wgs84bbox = $featureType.find('WGS84BoundingBox')
-            var latlonbbox = $featureType.find('LatLongBoundingBox')
+            var wgs84bbox = $(featureType.getElementsByTagNameNS('*', 'WGS84BoundingBox'));
+            var latlonbbox = $(featureType.getElementsByTagNameNS('*', 'LatLongBoundingBox'));
             if (wgs84bbox.length && wgs84bbox[0].children.length > 0) {
-                var ll = wgs84bbox.find('LowerCorner').text().split(' ');
-                var ur = wgs84bbox.find('UpperCorner').text().split(' ')
+                var ll = $(wgs84bbox[0].getElementsByTagNameNS('*', 'LowerCorner')).text().split(' ');
+                var ur = $(wgs84bbox[0].getElementsByTagNameNS('*', 'UpperCorner')).text().split(' ')
                 bbox = [parseFloat(ll[0]), parseFloat(ll[1]), parseFloat(ur[0]), parseFloat(ur[1])]
             } else if (latlonbbox.length) {
                 bbox = [parseFloat(latlonbbox.attr('minx')), parseFloat(latlonbbox.attr('miny')), parseFloat(latlonbbox.attr('maxx')), parseFloat(latlonbbox.attr('maxy'))]
             }
 
             return {
-                name: $featureType.find('Name').text(),
-                title: $featureType.find('Title').text(),
-                defaultSrs: $featureType.find('DefaultSRS, DefaultCRS').text(),
-                otherSrs: $featureType.find('SRS').text(),
+                name: $(featureType.getElementsByTagNameNS('*', 'Name')).text(),
+                title: $(featureType.getElementsByTagNameNS('*', 'Title')).text(),
+                defaultSrs: $(featureType.getElementsByTagNameNS('*', 'DefaultSRS')).text() || $(featureType.getElementsByTagNameNS('*', 'DefaultCRS')).text(),
+                otherSrs: $(featureType.getElementsByTagNameNS('*', 'SRS')).text(),
                 wgs84bbox: bbox
             }
         })
@@ -747,13 +747,16 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         var $descr = $(xmlDoc);
 
         // WARN extremely fragile and hackish way to parse FT schema
-        var $props = $descr.find('complexType').find('sequence').find('element');
-        var featureTypeProperties = $props.get().map(function(prop) {
+        var props = $descr[0].getElementsByTagNameNS('*', 'complexType')[0]
+                 .getElementsByTagNameNS('*', 'sequence')[0]
+                 .getElementsByTagNameNS('*', 'element')
+
+        var featureTypeProperties = $(props).map(function(idx, prop) {
             return {
                 type: $(prop).attr('type'),
                 name: $(prop).attr('name')
             }
-        })
+        }).get();
 
         return {
             properties: featureTypeProperties
@@ -964,7 +967,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
                                                             ftLayer.getSource().setState(ol.source.State.LOADING)
 
                                                             return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(params),
-                                                                {method: 'GET'}
+                                                                {method:'GET', credentials: 'include'}
                                                             ).then(
                                                                 function (response) {
                                                                     return response.text();
@@ -1017,6 +1020,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
                                                     visible: idx == 0
                                                 });
                                                 // override getExtent to take advertised bbox into account first
+                                                ftLayer.getSource().set('name', candidate.name);
                                                 ftLayer.getSource().set('ftDescr', candidate);
                                                 ftLayer.getSource().getFullExtent = getFTSourceExtent;
 
@@ -1139,6 +1143,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
                             }
                             isFirst = false;
 
+                            mapLayer.getSource().set('name', candidate.Name);
                             mapLayer.getSource().set('mlDescr', candidate);
                             mapLayer.getSource().getFullExtent = getWMSSourceExtent;
 
@@ -1235,6 +1240,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
                             mapLayer.getSource().updateDimensions(dimensions);
                         }
 
+                        mapLayer.getSource().set('name', candidate.Identifier);
                         mapLayer.getSource().set('mlDescr', candidate);
                         mapLayer.getSource().getFullExtent = getWMTSSourceExtent;
 
@@ -1386,7 +1392,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
                     layer.getSource().setState(ol.source.State.LOADING)
 
                     return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(queryParams),
-                        {method: 'GET'}
+                        {method:'GET', credentials: 'include'}
                     ).then(
                         function (response) {
                             return response.text();
@@ -1423,6 +1429,8 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
             visible : visible
         });
         // override getExtent to take advertised bbox into account first
+
+        layer.getSource().set('name', descriptor.name);
         layer.getSource().set('arcgisDescr', descriptor);
         layer.getSource().getFullExtent = getArcGISVectorExtent;
 
