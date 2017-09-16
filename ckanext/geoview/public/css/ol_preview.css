@@ -36,15 +36,22 @@
 
 
  #data-preview .ol-viewport .layer-switcher {
+     position: absolute;
+     top: 40px;
+     right: 10px;
  }
 
  #data-preview .ol-viewport .layer-switcher .stacked-layers {
-     right: 14px;
+     right: 3px;
+     top: 0px;
  }
 
 
  #data-preview .ol-viewport .layer-switcher .header {
      padding-right: 43px;
+     position: initial;
+     top: 0px;
+     right: 0px;
  }
 
  #data-preview .ol-viewport .layer-switcher label {
@@ -83,5 +90,9 @@
  }
 
  #data-preview .ol-viewport .layer-switcher .layer-list {
-     top: 80px;
+     top: 0px;
+     right: 0px;
+     position: initial;
+     border-radius: 0;
+     padding: 0;
  }
