@@ -1,19 +1,9 @@
 /* OpenLayers styling */
 .ol-viewport {
-  .popupContainer {
-    background-color: black;
-    color: white;
-    margin-top: 5px;
-    margin-left: 5px;
 
-    .popupContent>div{
-      padding: 3px;
-    }
-
-    .name {
-      font-weight: bold;
-      border-bottom: 1px solid #e5e4e7;
-    }
+  >canvas {
+    // this is needed for proper processing of height:100% style on HighDPI canvas
+    position: absolute;
   }
 
   .layer-switcher {
