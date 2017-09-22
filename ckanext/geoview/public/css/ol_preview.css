@@ -96,3 +96,10 @@
      border-radius: 0;
      padding: 0;
  }
+
+ #data-preview .ol-viewport .ol-mouse-position {
+     background-color: rgba(255,255,255,0.75);
+     border-radius: 2px;
+     padding: 1px;
+ }
+

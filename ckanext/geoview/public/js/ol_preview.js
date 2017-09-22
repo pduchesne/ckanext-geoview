@@ -178,12 +178,19 @@
 
                     var layerSwitcher = new ol.control.HilatsLayerSwitcher();
 
+                    var coordinateFormatter = function(coordinate) {
+                        var degrees = map && map.getView() && map.getView().getProjection() && (map.getView().getProjection().getUnits() == 'degrees')
+                        return ol.coordinate.toStringXY(coordinate, degrees ? 5:2);
+                    };
+
                     var options = {
                         target: $('.map')[0],
                         layers: [baseMapLayer],
                         controls: [
                             new ol.control.ZoomSlider(),
-                            new ol.control.MousePosition(),
+                            new ol.control.MousePosition( {
+                                coordinateFormat: coordinateFormatter,
+                            }),
                             layerSwitcher
                         ],
                         loadingDiv: false,
