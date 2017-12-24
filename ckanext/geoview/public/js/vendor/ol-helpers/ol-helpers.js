@@ -49,12 +49,25 @@ if (window.Proj4js) {
 
 }
 
+// duplicate this code to avoid a dependency on internal class ol.<...>.Projection_
+var createEPSG4326Proj = function(code, opt_axisOrientation) {
+    return new ol.proj.Projection({
+        code: code,
+        units: ol.proj.get('EPSG:4326').getUnits(),
+        extent: ol.proj.get('EPSG:4326').getExtent(),
+        axisOrientation: opt_axisOrientation,
+        global: true,
+        metersPerUnit: ol.proj.get('EPSG:4326').getMetersPerUnit(),
+        worldExtent: ol.proj.get('EPSG:4326').getWorldExtent()
+    })
+}
+
 // redefine GML EPSG:4326 with lon/lat axis order;
 // Don't do that. Force usage of EPSG4326_LONLAT in format.GML instead
-//ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('http://www.opengis.net/gml/srs/epsg.xml#4326', 'enu'));
+//ol.proj.addProjection(createEPSG4326Proj('http://www.opengis.net/gml/srs/epsg.xml#4326', 'enu'));
 
 // Define a special projection with lon/lat axis order to be used in format.GML hack
-ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'));
+ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
 (function() {
 
@@ -66,7 +79,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
 
     var EPSG4326 = OL_HELPERS.EPSG4326 = ol.proj.get("EPSG:4326")
     var EPSG4326_LONG = OL_HELPERS.EPSG4326_LONG = ol.proj.get('urn:ogc:def:crs:EPSG:6.6:4326')
-    var EPSG4326_LONLAT = OL_HELPERS.EPSG4326_LONLAT = new ol.proj.EPSG4326.Projection_('EPSG:4326', 'enu')
+    var EPSG4326_LONLAT = OL_HELPERS.EPSG4326_LONLAT = createEPSG4326Proj('EPSG:4326', 'enu')
     var Mercator = OL_HELPERS.Mercator = ol.proj.get("EPSG:3857")
     var WORLD_BBOX = OL_HELPERS.WORLD_BBOX = [-180, -90, 180, 90]
     var MAX_FEATURES = 300
@@ -77,6 +90,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
 
     // Override decimal parsers, as some capabilities use commas as decimal separator
     // (e.g. http://geoservices.wallonie.be/arcgis/services/EAU/ALEA_2016/MapServer/WMSServer)
+    /* Removed - requires debug version of OL
     var originalReadDecimal = ol.format.XSD.readDecimalString;
     ol.format.XSD.readDecimalString = function(string) {
         if (string) {
@@ -84,6 +98,7 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         }
         return originalReadDecimal(string);
     };
+    */
 
 
     ol.Map.prototype.addLayerWithExtent = function (layer) {
@@ -311,6 +326,14 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
 
     OL_HELPERS.FeatureInfoOverlay = function(options) {
         ol.Overlay.call(this, options);
+
+        var popupContent = $(this.getElement()).find('.popupContent');
+        popupContent.hover(function() {
+            popupContent.prop('isHovered', true)
+        }, function() {
+            popupContent.prop('isHovered', false)
+        })
+
         this.filter = options.filter;
         this.renderFeaturePopup = options.renderFeaturePopup || function(features, displayDetails) {
             var htmlContent;
@@ -342,28 +365,37 @@ ol.proj.addProjection(new ol.proj.EPSG4326.Projection_('EPSG:4326:LONLAT', 'enu'
         }
 
         this.hoveredFeatures = [];
+
+        this.on('change:map', function(evt) {
+            this.HL_handleMapChanged();
+        })
     };
     ol.inherits(OL_HELPERS.FeatureInfoOverlay, ol.Overlay);
 
     OL_HELPERS.FeatureInfoOverlay.prototype.setFeatures = function(features, displayDetails) {
+        var popupContent = $(this.getElement()).find('.popupContent');
+
         if (features.length == 0) {
-            this.setPosition(undefined);
+            // if features are no longer hovered, but info element still is, do not hide info
+            if (!popupContent.prop("isHovered"))
+                this.setPosition(undefined);
             return;
         }
 
         var htmlContent = this.renderFeaturePopup(features, displayDetails);
 
+        // do a clean detach to make sure the same element can be re-appended while keeping its listeners
+        this.appendedElement && $(this.appendedElement).detach();
+
         if (typeof htmlContent === 'string') {
-            $(this.getElement()).find('.popupContent').html(htmlContent);
+            popupContent.html(htmlContent);
         } else {
-            $(this.getElement()).find('.popupContent').empty().append(htmlContent);
+            popupContent.empty().append(this.appendedElement = htmlContent);
         }
 
     }
 
-    OL_HELPERS.FeatureInfoOverlay.prototype.handleMapChanged = function() {
-        ol.Overlay.prototype.handleMapChanged.call(this);
-
+    OL_HELPERS.FeatureInfoOverlay.prototype.HL_handleMapChanged = function() {
         var map = this.getMap();
         var _this = this;
         if (map) {

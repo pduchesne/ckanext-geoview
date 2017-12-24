@@ -11,8 +11,15 @@ ol.control.HilatsLayerSwitcher = function(opt_options) {
     var _this = this;
 
     this.parentElement = $("<div class='layer-switcher'></div>").hover(
-        function() {_this.showPanel()},
-        function() {_this.hidePanel()}
+        function(e) {
+            _this.showPanel()
+        },
+        function(e) {
+            // deal with FF triggering a mouseout when opening the select dropdown
+            // cf https://stackoverflow.com/questions/32561180/keep-hover-triggered-twitter-bootstrap-popover-alive-while-selecting-option-from
+            if (!(e.target && e.target.tagName == 'SELECT'))
+                _this.hidePanel()
+        }
     )
 
     this.header = $("<div class='header'></div>")
