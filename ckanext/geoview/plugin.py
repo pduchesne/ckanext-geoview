@@ -21,7 +21,7 @@ boolean_validator = p.toolkit.get_validator('boolean_validator')
 log = getLogger(__name__)
 
 GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'esrigeojson',
-                   'gft', 'arcgis_rest', 'esri rest']
+                   'gft', 'arcgis_rest', 'wmts', 'esri rest']
 
 
 def get_proxified_service_url(data_dict):
@@ -49,6 +49,16 @@ def get_common_map_config():
     return dict([(k.replace(namespace, ''), v) for k, v in config.iteritems()
                  if k.startswith(namespace)])
 
+def load_basemaps(basemapsFile):
+
+    try:
+        with open(basemapsFile) as config_file:
+            basemapsConfig = json.load(config_file)
+    except Exception, inst:
+        msg = "Couldn't read basemaps config from %r: %s" % (basemapsFile, inst)
+        raise Exception(msg)
+
+    return basemapsConfig
 
 def get_openlayers_viewer_config():
     '''
@@ -72,6 +82,10 @@ class GeoViewBase(p.SingletonPlugin):
     proxy_enabled = False
     same_domain = False
 
+    def configure(self, config):
+        basemapConfigFile = config.get('ckanext.geoview.basemaps', None)
+        self.basemapsConfig = basemapConfigFile and load_basemaps(basemapConfigFile)
+
     def update_config(self, config):
         p.toolkit.add_public_directory(config, 'public')
         p.toolkit.add_template_directory(config, 'templates')
@@ -93,6 +107,10 @@ class OLGeoView(GeoViewBase):
         m.connect('/dataset/{id}/resource/{resource_id}/service_proxy',
                   controller=controller,
                   action='proxy_service')
+
+        m.connect('/basemap_service/{map_id}',
+                  controller=controller,
+                  action='proxy_service_url')
         return m
 
     # ITemplateHelpers
@@ -115,7 +133,7 @@ class OLGeoView(GeoViewBase):
                     'feature_hoveron': [ignore_empty, boolean_validator],
                     'feature_style': [ignore_empty]
                 },
-               }
+                }
 
     def can_view(self, data_dict):
         format_lower = data_dict['resource'].get('format', '').lower()
@@ -141,7 +159,7 @@ class OLGeoView(GeoViewBase):
         return correct_format and can_preview_from_domain
 
     def view_template(self, context, data_dict):
-        return 'dataviewer/openlayers2.html'
+        return 'dataviewer/openlayers.html'
 
     def form_template(self, context, data_dict):
         return 'dataviewer/openlayers_form.html'
@@ -153,7 +171,7 @@ class OLGeoView(GeoViewBase):
         return self.can_view(data_dict)
 
     def preview_template(self, context, data_dict):
-        return 'dataviewer/openlayers2.html'
+        return 'dataviewer/openlayers.html'
 
     # Common for IResourceView and IResourcePreview
 
@@ -193,7 +211,8 @@ class OLGeoView(GeoViewBase):
         return {'resource_view_json': 'resource_view' in data_dict and json.dumps(data_dict['resource_view']),
                 'proxy_service_url': proxy_service_url,
                 'proxy_url': proxy_url,
-                'gapi_key': gapi_key}
+                'gapi_key': gapi_key,
+                'basemapsConfig' : self.basemapsConfig}
 
 
 class GeoJSONView(GeoViewBase):
