@@ -214,6 +214,26 @@ This file is a JSON encoded array of basemap definitions reproducing the structu
 
 When declared, this basemap list will override the ``ckanext.spatial.common_map`` properties.
 
+**URL specification**
+
+For WMS and WFS views, the URL must be specified carefully to get the desired result. In general, to browse the offered layers or features of a WMS or WFS endpoint, just specify the endpoint in the URL field of the resource, e.g.:
+
+https://neo.sci.gsfc.nasa.gov/wms/wms
+
+or 
+
+http://giswebservices.massgis.state.ma.us/geoserver/wfs
+
+You can request individual layers/features using the "#" sign, e.g.:
+
+https://neo.sci.gsfc.nasa.gov/wms/wms#MOD14A1_M_FIRE
+
+or
+
+http://giswebservices.massgis.state.ma.us/geoserver/wfs#GISDATA.MINLL1_ARC
+
+N.B. For WFS this is the feature name without the qualifier, e.g. GISDATA.MINLL1_ARC and not massgis:GISDATA.MINLL1_ARC in the example above.
+
 Leaflet GeoJSON Viewer
 ----------------------
 
