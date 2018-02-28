@@ -1424,7 +1424,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                     layer.getSource().setState(ol.source.State.LOADING)
 
                     return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(queryParams),
-                        {method:'GET', credentials: 'include'}
+                        {method:'GET'}
                     ).then(
                         function (response) {
                             return response.text();
