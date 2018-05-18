@@ -1,4 +1,5 @@
 from logging import getLogger
+from ckan import plugins as p
 import urlparse
 
 import requests
@@ -11,6 +12,9 @@ log = getLogger(__name__)
 
 MAX_FILE_SIZE = 3 * 1024 * 1024  # 1MB
 CHUNK_SIZE = 512
+
+# HTTP request parameters that may conflict with OGC services protocols and should be excluded from proxied calls
+OGC_EXCLUDED_PARAMS = ['service', 'version', 'request', 'outputformat', 'typename', 'layers', 'srsname', 'bbox', 'maxfeatures']
 
 def proxy_service_resource(self, context, data_dict):
     ''' Chunked proxy for resources. To make sure that the file is not too
@@ -27,8 +31,6 @@ def proxy_service_resource(self, context, data_dict):
 
 def proxy_service_url(self, url):
 
-    excluded_params = ['service', 'version', 'request', 'outputformat', 'typename', 'layers', 'srsname', 'bbox', 'maxfeatures']
-
     parts = urlparse.urlsplit(url)
     if not parts.scheme or not parts.netloc:
         base.abort(409, detail='Invalid URL.')
@@ -39,11 +41,13 @@ def proxy_service_url(self, url):
 
         params = urlparse.parse_qs(parts.query)
 
-        for key in dict(params):
-            if key.lower() in excluded_params:
-                del params[key]
+        if (not p.toolkit.asbool(base.config.get('ckanext.geoview.forward_ogc_request_params', 'False'))):
+            # remove query parameters that may conflict with OGC protocols
+            for key in dict(params):
+                if key.lower() in OGC_EXCLUDED_PARAMS:
+                    del params[key]
+            parts = parts._replace(query = urlencode(params))
 
-        parts = parts._replace(query = urlencode(params))
         parts = parts._replace(fragment = '') # remove potential fragment
         url = parts.geturl()
         if method == "POST":
