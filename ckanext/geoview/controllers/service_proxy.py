@@ -1,15 +1,20 @@
 from logging import getLogger
+from ckan import plugins as p
 import urlparse
 
 import requests
 
 import ckan.logic as logic
 import ckan.lib.base as base
+from urllib import urlencode
 
 log = getLogger(__name__)
 
 MAX_FILE_SIZE = 3 * 1024 * 1024  # 1MB
 CHUNK_SIZE = 512
+
+# HTTP request parameters that may conflict with OGC services protocols and should be excluded from proxied calls
+OGC_EXCLUDED_PARAMS = ['service', 'version', 'request', 'outputformat', 'typename', 'layers', 'srsname', 'bbox', 'maxfeatures']
 
 def proxy_service_resource(self, context, data_dict):
     ''' Chunked proxy for resources. To make sure that the file is not too
@@ -34,8 +39,17 @@ def proxy_service_url(self, url):
         req = self._py_object.request
         method = req.environ["REQUEST_METHOD"]
 
-        url = url.split('#')[0] # remove potential fragment
+        params = urlparse.parse_qs(parts.query)
 
+        if (not p.toolkit.asbool(base.config.get('ckanext.geoview.forward_ogc_request_params', 'False'))):
+            # remove query parameters that may conflict with OGC protocols
+            for key in dict(params):
+                if key.lower() in OGC_EXCLUDED_PARAMS:
+                    del params[key]
+            parts = parts._replace(query = urlencode(params))
+
+        parts = parts._replace(fragment = '') # remove potential fragment
+        url = parts.geturl()
         if method == "POST":
             length = int(req.environ["CONTENT_LENGTH"])
             headers = {"Content-Type": req.environ["CONTENT_TYPE"]}

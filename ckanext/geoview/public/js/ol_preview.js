@@ -105,7 +105,6 @@
                 }
 
                 this.map.addLayerWithExtent(resourceLayer)
-
             },
 
             _commonBaseLayer: function(mapConfig, callback, module) {
@@ -126,13 +125,11 @@
 
                 } else if (mapConfig.type == 'custom') {
                     mapConfig.type = 'XYZ'
-                } else if (!mapConfig.type) {
+                } else if (!mapConfig.type || mapConfig.type.toLowerCase() == 'osm') {
                     // default to Stamen base map
-                    mapConfig.url = ['//stamen-tiles-a.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
-                                '//stamen-tiles-b.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
-                                '//stamen-tiles-c.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png',
-                                '//stamen-tiles-d.a.ssl.fastly.net/terrain/${z}/${x}/${y}.png'];
-                    mapConfig.attribution = 'Map tiles by <a href="http://stamen.com">Stamen Design</a> (<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>). Data by <a href="http://openstreetmap.org">OpenStreetMap</a> (<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>)';
+                    mapConfig.type == 'OSM';
+                    mapConfig.url = "http://tile.openstreetmap.org/{z}/{x}/{y}.png";
+                    mapConfig.attribution = 'Map tiles & Data by OpenStreetMap, under CC BY SA.';
                 }
 
                 return OL_HELPERS.createLayerFromConfig(mapConfig, true, callback);
