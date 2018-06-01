@@ -20,6 +20,24 @@ if (typeof proj4 != "undefined" && proj4) {
     };
 }
 
+if (!ol.source.State) {
+    ol.source.State = {
+        UNDEFINED: 'undefined',
+        LOADING: 'loading',
+        READY: 'ready',
+        ERROR: 'error'
+    };
+}
+
+var OLgetState = ol.source.Vector.prototype.getState
+ol.source.Vector.prototype.getState = function() {
+    return this.HL_state || OLgetState.call(this);
+};
+ol.source.Vector.prototype.setState = function(state) {
+    this.HL_state = state;
+    this.changed();
+};
+
 String.prototype.hashCode = function() {
     var hash = 0, i, chr;
     if (this.length === 0) return hash;
@@ -73,7 +91,50 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
     // Establish the root object, `window` in the browser, or `global` on the server.
     var root = this;
-    var OL_HELPERS = root.OL_HELPERS = {}
+    var OL_HELPERS = root.OL_HELPERS = {
+        // this is currently used only for geojson parsing
+        FEATURE_GEOM_PROP : '_HILATS_Geometry',
+        DEFAULT_STYLEMAP : {
+        highlight : new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'blue',
+                width: 3
+            }),
+            image: new ol.style.Circle({
+                radius: 5,
+                stroke: new ol.style.Stroke({
+                    color: 'blue',
+                    width: 3
+                })
+            })
+        }),
+            selected : [
+            new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: 'white',
+                    width: 5
+                })}),
+            new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                    color: 'green',
+                    width: 3
+                }),
+                fill: new ol.style.Fill({
+                    color: 'rgba(255, 255, 255, 0.1)'
+                }),
+                image: new ol.style.Circle({
+                    radius: 5,
+                    fill: new ol.style.Fill({
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }),
+                    stroke: new ol.style.Stroke({
+                        color: 'green',
+                        width: 3
+                    })
+                })
+            }) ]
+    }
+    };
 
     var $_ = _ // keep pointer to underscore, as '_' will may be overridden by a closure variable when down the stack
 
@@ -88,17 +149,17 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         return !isNaN(parseFloat(n)) && isFinite(n);
     }
 
-    // Override decimal parsers, as some capabilities use commas as decimal separator
+    // When possible, override decimal parsers, as some capabilities use commas as decimal separator
     // (e.g. http://geoservices.wallonie.be/arcgis/services/EAU/ALEA_2016/MapServer/WMSServer)
-    /* Removed - requires debug version of OL
-    var originalReadDecimal = ol.format.XSD.readDecimalString;
-    ol.format.XSD.readDecimalString = function(string) {
-        if (string) {
-            string = string.replace(',', '.');
-        }
-        return originalReadDecimal(string);
-    };
-    */
+    var originalReadDecimal = ol.format && ol.format.XSD && ol.format.XSD.readDecimalString;
+    if (originalReadDecimal) {
+        ol.format.XSD.readDecimalString = function (string) {
+            if (string) {
+                string = string.replace(',', '.');
+            }
+            return originalReadDecimal(string);
+        };
+    }
 
 
     ol.Map.prototype.addLayerWithExtent = function (layer) {
@@ -118,7 +179,9 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                     projectedBbox = layer.getSource().getExtent && layer.getSource().getExtent();
                 }
 
-                if (isNumeric(projectedBbox[0]) &&
+                // sometimes the capabilities are wrong and the bbox is absent
+                if (projectedBbox &&
+                    isNumeric(projectedBbox[0]) &&
                     isNumeric(projectedBbox[1]) &&
                     isNumeric(projectedBbox[2]) &&
                     isNumeric(projectedBbox[3]))
@@ -142,8 +205,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 });
             }
 
-            loading.then(zoomToExtent)
-
+            return loading.then(zoomToExtent)
         }
 
     }
@@ -152,6 +214,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
      * Override loadFeatures to implement max features cap.
      * Take into account return value of loader func and reload new batches of data when needed
      */
+    /*
     ol.source.Vector.prototype.loadFeatures = function(
         extent, resolution, projection) {
         var loadedExtentsRtree = this.loadedExtentsRtree_;
@@ -183,6 +246,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             }
         }
     };
+    */
 
 
 
@@ -190,6 +254,11 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     // Returns the WGS84 bbox
     var getFTSourceExtent = function() {
         var bbox = this.get('ftDescr') && this.get('ftDescr').wgs84bbox;
+        return bbox;
+    }
+
+    var getFT3SourceExtent = function() {
+        var bbox = this.get('ftDescr') && this.get('ftDescr').extent.bbox;
         return bbox;
     }
 
@@ -252,13 +321,76 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
         this.loadingObjects = []
 
+        this.errorDiv = options.errorDiv
+        if (this.errorDiv === undefined) {
+            this.errorDiv = $("<div style='color: #511e17; font-size: 12px; padding: 2px 3px; background-color: rgba(255, 235, 131, 0.80);  display: none;'></div>")[0]
+        }
+
+        this.msgDiv = options.msgDiv
+        if (this.msgDiv === undefined) {
+            this.msgDiv = $("<div style='font-size: 12px; padding: 2px 3px; background-color: rgba(255,255,255,0.8); display: none;'></div>")[0]
+        }
+
         this.loadingDiv = options.loadingDiv
         if (this.loadingDiv === undefined) {
-            this.loadingDiv = $("<div class='loader' style='font-size: 10px; margin: 40px 40px; z-index: 3000; position: absolute; top: 0px;'></div>")[0]
+            this.loadingDiv = $("<div class='loader' style='font-size: 10px; margin: 40px 40px; z-index: 50; position: absolute; top: 0px;'></div>")[0]
         }
         this.loadingListener = options.loadingListener
 
         this.loadingDiv && this.getViewport().appendChild(this.loadingDiv);
+
+        var msgContainer = $("<div style='position: absolute; z-index: 50; left: 60px; top:10px;'></div>").appendTo(this.getViewport());
+        this.errorDiv && msgContainer.append(this.errorDiv);
+        this.msgDiv && msgContainer.append(this.msgDiv);
+
+        this.partiallyLoadedSources = [];
+        this.erroredSources = [];
+
+        this.on("change:partiallyLoaded", function() {
+            if (this.msgDiv) {
+                if (this.partiallyLoadedSources.length > 0) {
+                    var _thisMap = this;
+                    var msgDiv = $(this.msgDiv)
+                        .text("More features to load ")
+                        .append($("<button>Reload in current view</button>").click(function() {
+                            _thisMap.partiallyLoadedSources.forEach(function(src) {
+                                src.clear();
+                            })
+                        }))
+                    _thisMap.partiallyLoadedSources.forEach(function(src) {
+                        if (src.get('next_page')) {
+                            msgDiv.append($("<button>Next page</button>").click(function() {
+                                _thisMap.partiallyLoadedSources.forEach(function(src) {
+                                    src.nextPage();
+                                })
+                            }))
+                        }
+                    })
+                    this.msgDiv.style.display = '';
+                } else {
+                    this.msgDiv.style.display = 'none';
+                }
+            }
+        });
+
+        this.on("change:erroredSource", function() {
+            if (this.errorDiv) {
+                if (this.erroredSources.length > 0) {
+                    var _thisMap = this;
+                    $(this.errorDiv)
+                        .text("Layers in error - See console for details ")
+                        .append($("<button>Retry</button>").click(function() {
+                            _thisMap.erroredSources.forEach(function(src) {
+                                src.setState(ol.source.State.READY);
+                                src.clear();
+                            })
+                        }))
+                    this.errorDiv.style.display = '';
+                } else {
+                    this.errorDiv.style.display = 'none';
+                }
+            }
+        });
 
         this.updateLoadingStatus();
     };
@@ -289,6 +421,32 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
         var layerEnds = function(event) {
             var loadingObj = event.tile || event.target || this;
+
+
+            var es_idx = _this.erroredSources.indexOf(loadingObj);
+            if (this.getState() == ol.source.State.ERROR) {
+                if (es_idx == -1)
+                    _this.erroredSources.push(loadingObj);
+                _this.dispatchEvent("change:erroredSource");
+            } else {
+                if (es_idx >= 0) {
+                    _this.erroredSources.splice(es_idx, 1);
+                    _this.dispatchEvent("change:erroredSource")
+                }
+            }
+
+            var pls_idx = _this.partiallyLoadedSources.indexOf(loadingObj);
+            if (loadingObj.get && loadingObj.get('partial_load')) {
+                if (pls_idx == -1)
+                    _this.partiallyLoadedSources.push(loadingObj);
+                    _this.dispatchEvent("change:partiallyLoaded");
+            } else {
+                if (pls_idx >= 0) {
+                    _this.partiallyLoadedSources.splice(pls_idx, 1);
+                    _this.dispatchEvent("change:partiallyLoaded")
+                }
+            }
+
             var idx = _this.loadingObjects.indexOf(loadingObj)
             if (idx >= 0) {
                 _this.loadingObjects.splice(idx, 1)
@@ -302,14 +460,34 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         var layerError = layerEnds
 
         layer.getSource().on('change', function(e) {
-            if (layer.getSource().getState() == 'loading') {
+            if (layer.getSource().getState() == ol.source.State.LOADING) {
                 layerStarts.call(this, e)
-            } else if (layer.getSource().getState() == 'ready')
+            } else if (layer.getSource().getState() == ol.source.State.READY)
             {
                 layerEnds.call(this, e)
-            } else if (layer.getSource().getState() == 'error')
+            } else if (layer.getSource().getState() == ol.source.State.ERROR)
             {
                 layerError.call(this, e)
+            }
+        });
+
+        layer.on('change:visible', function(e) {
+            var pls_idx = _this.partiallyLoadedSources.indexOf(this.getSource());
+            if (this.getVisible() && this.getSource().get('partial_load')) {
+                _this.partiallyLoadedSources.push(this.getSource());
+                _this.dispatchEvent("change:partiallyLoaded");
+            } else if (!this.getVisible() && pls_idx >= 0) {
+                _this.partiallyLoadedSources.splice(pls_idx, 1);
+                _this.dispatchEvent("change:partiallyLoaded")
+            }
+
+            var es_idx = _this.erroredSources.indexOf(this.getSource());
+            if (this.getVisible() && this.getSource().getState() == ol.source.State.ERROR) {
+                _this.erroredSources.push(this.getSource());
+                _this.dispatchEvent("change:erroredSource");
+            } else if (!this.getVisible() && es_idx >= 0) {
+                _this.erroredSources.splice(es_idx, 1);
+                _this.dispatchEvent("change:erroredSource")
             }
         });
 
@@ -323,6 +501,107 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     };
 
 
+    /**
+     * Options : {
+     *     className,
+     *     target,
+     *     render : () => {render all features} ,
+     *     renderFeature : (feature, $elem) => {render feature in $elem}
+     * }
+     * @param opt_options
+     * @constructor
+     */
+    OL_HELPERS.FeatureDetailsControl = function(opt_options) {
+
+        var options = opt_options ? opt_options : {};
+
+        var element = document.createElement('DIV');
+        element.className = options.className !== undefined ? options.className : 'ol-feature-details';
+
+        var render = options.render ?
+            options.render : OL_HELPERS.FeatureDetailsControl.render;
+
+        ol.control.Control.call(this, {
+            element: element,
+            render: render,
+            target: options.target
+        });
+
+        this.renderFeature = options.renderFeature ?
+            options.renderFeature : OL_HELPERS.FeatureDetailsControl.renderFeature;
+
+
+        this.on('change:'+OL_HELPERS.FeatureDetailsControl.PROPERTIES.SELECTED_FEATURES, this.handleFeaturesChanged);
+
+    };
+    ol.inherits(OL_HELPERS.FeatureDetailsControl, ol.control.Control);
+
+    OL_HELPERS.FeatureDetailsControl.prototype.handleFeaturesChanged = function() {
+        this.render();
+    };
+
+    OL_HELPERS.FeatureDetailsControl.prototype.setFeatures = function(features) {
+        if (features instanceof ol.Collection)
+            features = features.getArray();
+        this.set(OL_HELPERS.FeatureDetailsControl.PROPERTIES.SELECTED_FEATURES, features || []);
+    };
+
+    /**
+     * Update the mouseposition element.
+     * @param {ol.MapEvent} mapEvent Map event.
+     * @this {ol.control.MousePosition}
+     * @api
+     */
+    OL_HELPERS.FeatureDetailsControl.render = function() {
+        var htmlContent;
+
+        var selectedFeatures = this.get(OL_HELPERS.FeatureDetailsControl.PROPERTIES.SELECTED_FEATURES) || [];
+
+        var container = $(this.element)
+
+        var _thisControl = this;
+        if (selectedFeatures && selectedFeatures.length > 0) {
+            var detailsArr = selectedFeatures.map(function(f) {
+                var $details = $("<div class='featureDetails'></div>")
+                    .prop('feature', f)
+                _thisControl.renderFeature(f, $details)
+
+                return $details;
+            })
+            container.empty().append(detailsArr);
+        } else {
+            container.empty();
+        }
+
+    };
+
+    OL_HELPERS.FeatureDetailsControl.renderFeature = function(feature, container) {
+        var htmlContent;
+
+        if (feature) {
+
+            var layerTitle = feature && feature.layer && feature.layer.get('title')
+            htmlContent = "<div class='name'>" + layerTitle +" : <b>"+ (feature.get('name') || feature.getId()) + "</b></div>";
+
+            htmlContent += "<div class='content'><table>";
+            var geomName = feature.getGeometryName();
+            feature.getKeys().forEach(function(prop) {
+                if (prop != geomName)
+                    htmlContent += "<tr><td class='propKey'>" + prop + "</td><td class='propValue'>" + feature.get(prop) + "</td></tr></div>"
+            })
+            htmlContent += "</table></div>";
+
+            $(container).append($(htmlContent));
+        } else {
+            // return undefined
+        }
+
+    };
+
+    OL_HELPERS.FeatureDetailsControl.PROPERTIES = {
+        SELECTED_FEATURES : "selectedFeatures"
+    };
+
 
     OL_HELPERS.FeatureInfoOverlay = function(options) {
         ol.Overlay.call(this, options);
@@ -334,6 +613,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             popupContent.prop('isHovered', false)
         })
 
+        this.showDetails = options.showDetails;
         this.filter = options.filter;
         this.renderFeaturePopup = options.renderFeaturePopup || function(features, displayDetails) {
             var htmlContent;
@@ -346,7 +626,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
                 htmlContent += "<table>";
                 feature.getKeys().forEach(function(prop) {
-                    htmlContent += "<tr><td>" + prop + "</td><td>" + feature.get(prop) + "</td></tr></div>"
+                    htmlContent += "<tr><td class='propKey'>" + prop + "</td><td class='propValue'>" + feature.get(prop) + "</td></tr></div>"
                 })
                 htmlContent += "</table>"
             } else {
@@ -404,23 +684,25 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 var changed = false;
                 var features = [];
                 map.forEachFeatureAtPixel(evt.pixel, function(feature, layer) {
-                    if (feature && (!_this.filter || _this.filter(feature, layer))) // sometimes feature is undefined (?!)
-                        features.push(feature);
-                    feature.layer = layer
-                    if (_this.hoveredFeatures.indexOf(feature)<0) {
-                        changed = true
+                    if (layer != null) { // null layer is from unmanaged layers, presumably form Select interaction
+                        if (feature && (!_this.filter || _this.filter(feature, layer))) // sometimes feature is undefined (?!)
+                            features.push(feature);
+                        feature.layer = layer
+                        if (_this.hoveredFeatures.indexOf(feature) < 0) {
+                            changed = true
+                        }
                     }
                 });
 
-                if (features.length != _this.hoveredFeatures.length)
-                    changed = true
+                changed = !$_.isEqual(features, _this.hoveredFeatures)
 
                 if (changed) {
                     if (_this.displayDetailsTimeout)
                         clearTimeout(_this.displayDetailsTimeout)
                     _this.hoveredFeatures = features;
                     _this.setFeatures(_this.hoveredFeatures);
-                    _this.displayDetailsTimeout = setTimeout(function() {_this.setFeatures(_this.hoveredFeatures, true);}, 500);
+                    if (_this.showDetails)
+                        _this.displayDetailsTimeout = setTimeout(function() {_this.setFeatures(_this.hoveredFeatures, true);}, 500);
                 }
 
                 if (_this.hoveredFeatures.length > 0) {
@@ -663,7 +945,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     OL_HELPERS.createGFTLayer = function (tableId, GoogleAPIKey) {
         return new OpenLayers.Layer.Vector(
             "GFT", {
-                styleMap: defaultStyleMap,
+                styleMap: OL_HELPERS.DEFAULT_STYLEMAP,
                 projection: EPSG4326,
                 strategies: [new OpenLayers.Strategy.Fixed()],
                 protocol: new OpenLayers.Protocol.Script({
@@ -712,7 +994,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     OL_HELPERS.createGMLLayer = function (url) {
 
         var gml = new OpenLayers.Layer.Vector("GML", {
-            styleMap: defaultStyleMap,
+            styleMap: OL_HELPERS.DEFAULT_STYLEMAP,
             strategies: [new OpenLayers.Strategy.Fixed()],
             protocol: new OpenLayers.Protocol.HTTP({
                 url: url,
@@ -954,101 +1236,161 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
                                                     gmlFormat: gmlFormat
                                                 })
+
+
+                                                var ftSource = new ol.source.Vector({
+                                                    loader: function (extent, resolution, mapProjection) {
+
+                                                        var bbox;
+                                                        if (ver != '1.0.0') {
+                                                            // let's set the bbox srs explicitly to avoid default behaviours among server impls
+
+                                                            if (ol.proj.equivalent(mapProjection, OL_HELPERS.EPSG4326)
+                                                            // apparently 4326 extents from map.view are always in lon/lat already
+                                                            //&& mapProjection.getAxisOrientation() == 'enu'
+                                                                ) {
+                                                                // the current bbox is expressed in lon/lat --> flip axis
+                                                                extent = [extent[1], extent[0], extent[3], extent[2]];
+
+                                                                bbox = extent.join(',') + ',' + OL_HELPERS.EPSG4326_LONG.getCode()
+                                                            } else {
+                                                                bbox = extent.join(',') + ',' + mapProjection.getCode()
+                                                            }
+                                                        } else {
+                                                            bbox = extent.join(',')
+                                                        }
+
+                                                        var params = {
+                                                            service: 'WFS',
+                                                            version: ver,
+                                                            request: 'GetFeature',
+                                                            maxFeatures: MAX_FEATURES,
+                                                            typename: candidate.name, /* TODO deal with WFS that require the prefix to be included : $candidate.prefixedName*/
+                                                            srsname: resolvedSrs.getCode(),
+                                                            /* explicit SRS must be provided here, as some impl (geoserver)
+                                                             take lat/lon axis order by default.
+                                                             EPSG:4326 enforces lon/lat order */
+                                                            /* TODO check if map proj is compatible with WFS
+                                                             some versions/impls need always 4326 bbox
+                                                             do on-the-fly reprojection if needed */
+                                                            bbox: bbox,
+                                                            // some WFS have wrong axis order if GML3
+                                                            outputFormat: gmlFormatVersion
+                                                        }
+
+                                                        ftLayer.getSource().setState(ol.source.State.LOADING)
+
+                                                        return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(params),
+                                                            {method:'GET', credentials: 'include'}
+                                                        ).then(
+                                                            function (response) {
+                                                                if (!response.ok)
+                                                                    throw "GetFeatures failed: "+response.statusText;
+                                                                else
+                                                                    return response.text();
+                                                            }
+                                                        ).then(
+                                                            function (text) {
+                                                                var features = format.readFeatures(text, {featureProjection: mapProjection, dataProjection: resolvedSrs})
+                                                                /* This is no longer needed as axis order is forced to lon/lat in format.GML
+                                                                 if (!isLatLon && ol.proj.equivalent(resolvedSrs, OL_HELPERS.EPSG4326)) {
+                                                                 // OL3+ only supports xy. --> reverse axis order if not native latLon
+                                                                 for (var i = 0; i < features.length; i++) {
+                                                                 features[i].getGeometry().applyTransform(function (coords, coords2, stride) {
+                                                                 for (var j = 0; j < coords.length; j += stride) {
+                                                                 var y = coords[j];
+                                                                 var x = coords[j + 1];
+                                                                 coords[j] = x;
+                                                                 coords[j + 1] = y;
+                                                                 }
+                                                                 });
+                                                                 }
+                                                                 }
+                                                                 */
+
+                                                                // generate fid from properties hash to avoid multiple insertion of same feature
+                                                                // (when max_features strategy is applied and features have no intrisic ID)
+                                                                features.forEach(function(feature) {
+                                                                    if (feature.getId() === undefined) {
+                                                                        var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
+                                                                        feature.setId(hashkey);
+                                                                    }
+                                                                })
+
+                                                                ftLayer
+                                                                    .getSource()
+                                                                    .addFeatures(features);
+
+                                                                var moreToLoad = features.length >= MAX_FEATURES;
+                                                                ftLayer.getSource().set('partial_load', moreToLoad);
+
+                                                                ftLayer.getSource().setState(ol.source.State.READY);
+                                                                return moreToLoad;
+                                                            }
+                                                        ).catch(function (ex) {
+                                                                ftLayer.getSource().setState(ol.source.State.ERROR);
+                                                                ftLayer.getSource().set("error", ex);
+                                                                console.warn("GetFeatures failed on "+ftLayer.getSource().get('name')+": "+ex);
+                                                                console.warn(ex);
+                                                            })
+                                                    },
+                                                    strategy: ol.loadingstrategy.bbox,
+                                                    projection: resolvedSrs // is this needed ?
+                                                    //maxExtent:
+                                                })
+
+                                                ftSource.getFeatureById = function(id) {
+                                                    var promise = $.Deferred();
+
+                                                    var params = {
+                                                        service: 'WFS',
+                                                        version: ver,
+                                                        request: 'GetFeature',
+                                                        typename: candidate.name, /* TODO deal with WFS that require the prefix to be included : $candidate.prefixedName*/
+                                                        featureID: id,
+                                                        srsname: resolvedSrs.getCode(),
+                                                        outputFormat: gmlFormatVersion
+                                                    }
+
+                                                    fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(params),
+                                                        {method:'GET', credentials: 'include'}
+                                                    ).then(
+                                                        function (response) {
+                                                            if (!response.ok)
+                                                                throw "GetFeatures failed: "+response.statusText;
+                                                            else
+                                                                return response.text();
+                                                        }
+                                                    ).then(
+                                                        function (text) {
+                                                            var features = format.readFeatures(text, {featureProjection: map.getView().getProjection(), dataProjection: resolvedSrs})
+
+                                                            // generate fid from properties hash to avoid multiple insertion of same feature
+                                                            // (when max_features strategy is applied and features have no intrisic ID)
+                                                            features.forEach(function(feature) {
+                                                                if (feature.getId() === undefined) {
+                                                                    var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
+                                                                    feature.setId(hashkey);
+                                                                }
+                                                            })
+
+                                                            if (features.length == 1)
+                                                                promise.resolve(features[0]);
+                                                            else
+                                                                promise.reject("Wrong number of features: "+features.length);
+                                                        }
+                                                    ).catch(function (ex) {
+                                                            console.warn("GetFeatureById failed on "+ftLayer.getSource().get('name')+" / "+id+" : "+ex);
+                                                            console.warn(ex);
+                                                            promise.reject(ex);
+                                                        })
+
+                                                    return promise;
+                                                }
+
                                                 ftLayer = new ol.layer.Vector({
                                                     title: candidate.title,
-                                                    source: new ol.source.Vector({
-                                                        loader: function (extent, resolution, mapProjection) {
-
-                                                            var bbox;
-                                                            if (ver != '1.0.0') {
-                                                                // let's set the bbox srs explicitly to avoid default behaviours among server impls
-
-                                                                if (ol.proj.equivalent(mapProjection, OL_HELPERS.EPSG4326)
-                                                                // apparently 4326 extents from map.view are always in lon/lat already
-                                                                //&& mapProjection.getAxisOrientation() == 'enu'
-                                                                    ) {
-                                                                    // the current bbox is expressed in lon/lat --> flip axis
-                                                                    extent = [extent[1], extent[0], extent[3], extent[2]];
-
-                                                                    bbox = extent.join(',') + ',' + OL_HELPERS.EPSG4326_LONG.getCode()
-                                                                } else {
-                                                                    bbox = extent.join(',') + ',' + mapProjection.getCode()
-                                                                }
-                                                            } else {
-                                                                bbox = extent.join(',')
-                                                            }
-
-                                                            var params = {
-                                                                service: 'WFS',
-                                                                version: ver,
-                                                                request: 'GetFeature',
-                                                                maxFeatures: MAX_FEATURES,
-                                                                typename: candidate.name, /* TODO deal with WFS that require the prefix to be included : $candidate.prefixedName*/
-                                                                srsname: resolvedSrs.getCode(),
-                                                                /* explicit SRS must be provided here, as some impl (geoserver)
-                                                                 take lat/lon axis order by default.
-                                                                 EPSG:4326 enforces lon/lat order */
-                                                                /* TODO check if map proj is compatible with WFS
-                                                                 some versions/impls need always 4326 bbox
-                                                                 do on-the-fly reprojection if needed */
-                                                                bbox: bbox,
-                                                                // some WFS have wrong axis order if GML3
-                                                                outputFormat: gmlFormatVersion
-                                                            }
-
-                                                            ftLayer.getSource().setState(ol.source.State.LOADING)
-
-                                                            return fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(params),
-                                                                {method:'GET', credentials: 'include'}
-                                                            ).then(
-                                                                function (response) {
-                                                                    return response.text();
-                                                                }
-                                                            ).then(
-                                                                function (text) {
-                                                                    var features = format.readFeatures(text, {featureProjection: mapProjection, dataProjection: resolvedSrs})
-                                                                    /* This is no longer needed as axis order is forced to lon/lat in format.GML
-                                                                     if (!isLatLon && ol.proj.equivalent(resolvedSrs, OL_HELPERS.EPSG4326)) {
-                                                                     // OL3+ only supports xy. --> reverse axis order if not native latLon
-                                                                     for (var i = 0; i < features.length; i++) {
-                                                                     features[i].getGeometry().applyTransform(function (coords, coords2, stride) {
-                                                                     for (var j = 0; j < coords.length; j += stride) {
-                                                                     var y = coords[j];
-                                                                     var x = coords[j + 1];
-                                                                     coords[j] = x;
-                                                                     coords[j + 1] = y;
-                                                                     }
-                                                                     });
-                                                                     }
-                                                                     }
-                                                                     */
-
-                                                                    // generate fid from properties hash to avoid multiple insertion of same feature
-                                                                    // (when max_features strategy is applied and features have no intrisic ID)
-                                                                    features.forEach(function(feature) {
-                                                                        if (feature.getId() === undefined) {
-                                                                            var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
-                                                                            feature.setId(hashkey);
-                                                                        }
-                                                                    })
-
-                                                                    ftLayer
-                                                                        .getSource()
-                                                                        .addFeatures(features);
-                                                                    ftLayer.getSource().setState(ol.source.State.READY);
-
-                                                                    return features.length >= MAX_FEATURES
-                                                                }
-                                                            ).catch(function (ex) {
-                                                                    ftLayer.getSource().setState(ol.source.State.ERROR);
-                                                                    console.warn("GetFeatures failed");
-                                                                    console.warn(ex);
-                                                                })
-                                                        },
-                                                        strategy: ol.loadingstrategy.bbox,
-                                                        projection: resolvedSrs // is this needed ?
-                                                        //maxExtent:
-                                                    }),
+                                                    source: ftSource,
                                                     visible: idx == 0
                                                 });
                                                 // override getExtent to take advertised bbox into account first
@@ -1118,6 +1460,187 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
         return deferredResult;
     }
+
+
+
+
+    OL_HELPERS.withWFS3Types = function (proxyUri, layerProcessor, ftName, map, proxifyFn) {
+
+        var deferredResult = $.Deferred()
+
+        var openAPIclient = new SwaggerClient(
+            proxyUri,
+            {requestInterceptor:
+                proxifyFn && function(req) {
+                    req.url = proxifyFn(req.url);
+                    return req;
+                },
+
+            responseInterceptor:
+                function(resp) {
+                    if (resp.body && !resp.body.servers) {
+                        // hack to deal with servers not returning servers block
+                        var serverUrl = decodeURIComponent(OL_HELPERS.parseURL(proxyUri).query._uri);
+                        var apiIdx = serverUrl.indexOf("/api");
+                        serverUrl = serverUrl.substring(0, apiIdx);
+                        resp.body.servers = [{
+                            url: serverUrl
+                        }]
+                    }
+                    return resp;
+                }
+            })
+            .then (function(openAPIclient) {
+
+                openAPIclient.apis.Capabilities.describeCollections({f: 'json'}).then(
+                    function (capas) {
+
+
+                        var candidates = capas.obj.collections
+                        if (ftName) candidates = capas.featureTypes.filter(function (ft) {
+                            return ft.name == ftName
+                        })
+
+                        var deferredLayers = []
+
+                        candidates.forEach(function (candidate, idx) {
+                            if (!candidate.name)
+                                candidate.name = candidate.collectionId;
+
+                            var deferredLayer = $.Deferred();
+                            deferredLayers.push(deferredLayer);
+
+                            var geojsonFormat = new ol.format.GeoJSON({
+                                // avoid collision with potential geojson properties named 'geometry'
+                                // cf https://stackoverflow.com/questions/32746143/geojson-with-a-geometry-property-in-ol3
+                                geometryName: OL_HELPERS.FEATURE_GEOM_PROP,
+                                defaultDataProjection: OL_HELPERS.EPSG4326
+                            });
+
+                            var ftSource = new ol.source.Vector({
+                                loader: function (extent, resolution, mapProjection) {
+
+                                    var bbox4326 = ol.proj.transformExtent(extent, mapProjection, OL_HELPERS.EPSG4326)
+
+                                    var params = {
+                                        f: 'json',
+                                        count: MAX_FEATURES,
+                                        bbox: bbox4326.join(',')
+                                    }
+
+                                    this.setState(ol.source.State.LOADING);
+                                    var getOpName = openAPIclient.spec.paths['/'+candidate.name].get.operationId;
+                                    return openAPIclient.apis.Features[getOpName](params).then(
+                                        function (result) {
+                                            if (result.parseError) {
+                                                throw "Parse Error: "+result.parseError.message;
+                                            }
+                                            // make sure we have IDs for every feature
+                                            result.obj.features.forEach(function(jsonFeature) {
+                                                if (jsonFeature.id === undefined) {
+                                                    if (jsonFeature.ID) {
+                                                        jsonFeature.id = jsonFeature.ID;
+                                                    } else {
+                                                        // generate fid from properties hash to avoid multiple insertion of same feature
+                                                        // (when max_features strategy is applied and features have no intrisic ID)
+                                                        var hashkey = JSON.stringify(jsonFeature);
+                                                        jsonFeature.id = hashkey;
+                                                    }
+                                                }
+                                            })
+
+                                            var features = geojsonFormat.readFeatures(
+                                                    result.obj || [], // content is undefined when no result (?!)
+                                                {featureProjection: mapProjection,
+                                                    dataProjection: OL_HELPERS.EPSG4326})
+
+                                            ftLayer
+                                                .getSource()
+                                                .addFeatures(features);
+
+                                            var moreToLoad = features.length >= MAX_FEATURES;
+                                            ftLayer.getSource().set('partial_load', moreToLoad);
+                                            ftLayer.getSource().setState(ol.source.State.READY);
+
+                                            return moreToLoad
+                                        }
+                                    ).catch(function (ex) {
+                                            ftLayer.getSource().setState(ol.source.State.ERROR);
+                                            ftLayer.getSource().set("error", ex);
+                                            console.warn("GetFeatures failed on "+ftLayer.getSource().get('name')+": "+ex);
+                                        })
+                                },
+                                strategy: ol.loadingstrategy.bbox
+                            })
+
+                            ftSource.getFeatureById = function(id) {
+                                var getFeatureByIdOpName = openAPIclient.spec.paths['/'+candidate.name+'/{id}'].get.operationId;
+                                var promise = $.Deferred();
+                                // try both the 'Features' and 'Feature' tags. Not sure which one is correct, check the spec.
+                                (openAPIclient.apis.Features[getFeatureByIdOpName] || openAPIclient.apis.Feature[getFeatureByIdOpName]) ({id: id, f: 'json'}).then(
+                                    function (result) {
+                                        if (result.parseError) {
+                                            throw "Parse Error: "+result.parseError.message;
+                                        }
+
+                                        if (!result.obj.type == 'FeatureCollection' || result.obj.features ) {
+                                            if (!result.obj.features)
+                                                throw "Results advertised as FeatureCollection, but not containing a 'features' array"
+                                            result.obj = result.obj.features[0];
+                                        }
+
+                                        // make sure we have IDs for every feature
+                                        if (result.obj.id === undefined && result.obj.ID)
+                                            result.obj.id = result.obj.ID;
+
+                                        var features = geojsonFormat.readFeatures(
+                                                result.obj || [], // content is undefined when no result (?!)
+                                            {featureProjection: map.getView().getProjection(),
+                                                dataProjection: OL_HELPERS.EPSG4326})
+
+                                        promise.resolve(features.length>0 && features[0]);
+                                    }
+                                ).catch(function (ex) {
+                                        console.warn("GetFeatureById failed on "+ftLayer.getSource().get('name')+" / "+id+" : "+ex);
+                                        promise.reject(ex);
+                                    })
+
+                                return promise;
+                            }
+
+                            var ftLayer = new ol.layer.Vector({
+                                title: candidate.title,
+                                source: ftSource,
+                                visible: idx == 0
+                            });
+                            // override getExtent to take advertised bbox into account first
+                            ftLayer.getSource().set('name', candidate.name);
+                            ftLayer.getSource().set('ftDescr', candidate);
+                            ftLayer.getSource().getFullExtent = getFT3SourceExtent;
+
+                            layerProcessor(ftLayer);
+
+                            deferredLayer.resolve(ftLayer);
+                        })
+
+                        $.when.apply($, deferredLayers).then(function() {
+                            deferredResult.resolve(deferredLayers)
+                        })
+
+                    },
+                    // failure callback
+                    function(err) {
+                        deferredResult.reject(err);
+                    }
+                )
+            }).catch(function(err) {
+                deferredResult.reject(err);
+            })
+
+        return deferredResult;
+    }
+
+
 
 
     OL_HELPERS.withWMSLayers = function (capaUrl, getMapUrl, layerProcessor, layerName, useTiling, map) {
@@ -1197,9 +1720,14 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
                 $_.each(capas.Capability.Layer.Layer, processLayerCandidate)
 
-                $.when.apply($, deferredLayers).then(function() {
-                    deferredResult.resolve(deferredLayers)
-                })
+                $.when.apply($, deferredLayers).then(
+                    function() {
+                        deferredResult.resolve(deferredLayers)
+                    },
+                    function(err) {
+                        deferredResult.reject(err)
+                    }
+                )
             },
             // failure callback
             function(err) {
@@ -1304,20 +1832,44 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     OL_HELPERS.createGeoJSONLayer = function (url) {
 
         var geojsonFormat = new ol.format.GeoJSON({
+            // avoid collision with potential geojson properties named 'geometry'
+            // cf https://stackoverflow.com/questions/32746143/geojson-with-a-geometry-property-in-ol3
+            geometryName: OL_HELPERS.FEATURE_GEOM_PROP,
             defaultDataProjection: OL_HELPERS.EPSG4326
         });
 
+        var success = function(features, dataProjection) {
+            geojson.getSource().addFeatures(features);
+            // set source as ready once features are loaded
+            geojson.getSource().set('waitingOnFirstData', false)
+            geojson.getSource().setState(ol.source.State.READY);
+        }
+
         // use a custom loader to set source state
-        var geojsonLoader = ol.featureloader.loadFeaturesXhr(
-            url,
-            geojsonFormat,
-            function(features, dataProjection) {
-                this.addFeatures(features);
-                // set source as ready once features are loaded
-                geojson.getSource().set('waitingOnFirstData', false)
-                this.setState(ol.source.State.READY);
-            },
-            /* FIXME handle error */ ol.nullFunction);
+        var geojsonLoader =
+            function(extent, resolution, projection) {
+
+                $.ajax({url: geojson.getSource().url, dataType: 'json', success: function(response) {
+                    if (!response || response.error) {
+                        //TODO
+                    } else {
+                        var source = response
+
+                        if (response.links) {
+                            var nextLink = response.links.find(function(link) {return link.rel == 'next' });
+                            if (nextLink && nextLink.href) {
+                                geojson.getSource().set('partial_load', true);
+                                geojson.getSource().set('next_page', nextLink.href);
+                            }
+                        }
+
+                        var features = geojsonFormat.readFeatures(source,
+                            {featureProjection: projection})
+                        var sourceProjection = geojsonFormat.readProjection(source)
+                        success.call(this, features, sourceProjection);
+                    }
+                }});
+            }
 
         var geojson = new ol.layer.Vector({
             title: 'GeoJSON',
@@ -1330,6 +1882,15 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 format: geojsonFormat
             })
         });
+        geojson.getSource().url = url;
+        geojson.getSource().nextPage = function() {
+            if (this.get('next_page')) {
+                this.url = this.get('next_page');
+                //TODO must find a way to append features
+                geojson.getSource().clear();
+            }
+        };
+
 
         geojson.getSource().set('waitingOnFirstData', true);
 
@@ -1342,7 +1903,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         var esrijson = new OpenLayers.Layer.Vector(
             "Esri GeoJSON",
             {
-                styleMap: defaultStyleMap,
+                styleMap: OL_HELPERS.DEFAULT_STYLEMAP,
                 projection: EPSG4326,
                 strategies: [new OpenLayers.Strategy.Fixed()],
                 style: default_style,
@@ -1358,34 +1919,52 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         return esrijson
     }
 
-    OL_HELPERS.withArcGisLayers = function (url, layerProcessor, layerName, layerBaseUrl) {
+    OL_HELPERS.withArcGisLayers = function (url, layerProcessor, layerName, layerBaseUrl, map) {
+
+        var deferredResult = $.Deferred()
+
+        var deferredLayers = []
 
         parseArcGisDescriptor(
             url,
             function (descriptor) {
 
                 if (descriptor.type == "Feature Layer") {
-                    var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/query", descriptor, true)
-                    layerProcessor(newLayer)
+                    var deferredLayer = $.Deferred();
+                    deferredLayers.push(deferredLayer);
+                    var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/query", descriptor, true, map)
+                    layerProcessor(newLayer);
+
+                    deferredLayer.resolve(newLayer);
                 } else if (descriptor.type == "Group Layer") {
                     // TODO intermediate layer
                 } else if (!descriptor.type && descriptor.layers) {
                     var isFirst = true
                     $_.each(descriptor.layers, function (layer, idx) {
+                        var deferredLayer = $.Deferred();
+                        deferredLayers.push(deferredLayer);
                         if (!layer.subLayerIds) {
-                            var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/" + layer.id + "/query", layer, isFirst)
+                            var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/" + layer.id + "/query", layer, isFirst, map)
                             layerProcessor(newLayer)
-                            isFirst = false
+                            isFirst = false;
+                            deferredLayer.resolve(newLayer);
                         }
                     })
                 }
 
+                $.when.apply($, deferredLayers).then(function() {
+                    deferredResult.resolve(deferredLayers)
+                })
+
             }
         )
+        //TODO catch and reject
+
+        return deferredResult
     }
 
 
-    OL_HELPERS.createArcgisFeatureLayer = function (url, descriptor, visible) {
+    OL_HELPERS.createArcgisFeatureLayer = function (url, descriptor, visible, map) {
 
         var format = new ol.format.EsriJSON();
 
@@ -1438,17 +2017,24 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                             // (when max_features strategy is applied and features have no intrisic ID)
                             features.forEach(function(feature) {
                                 if (feature.getId() === undefined) {
-                                    var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
-                                    feature.setId(hashkey);
+                                    if (feature.get("OBJECTID"))
+                                        feature.setId(feature.get("OBJECTID"));
+                                    else {
+                                        var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
+                                        feature.setId(hashkey);
+                                    }
                                 }
                             })
 
                             layer
                                 .getSource()
                                 .addFeatures(features);
+
+                            var moreToLoad = features.length >= MAX_FEATURES;
+                            layer.getSource().set('partial_load', moreToLoad);
                             layer.getSource().setState(ol.source.State.READY);
 
-                            //return features.length >= MAX_FEATURES
+                            return moreToLoad
                         }
                     ).catch(function (ex) {
                             layer.getSource().setState(ol.source.State.ERROR);
@@ -1460,10 +2046,76 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             }),
             visible : visible
         });
-        // override getExtent to take advertised bbox into account first
+
+
+        layer.getSource().getFeatureById = function(id) {
+
+
+            var outSrs = OL_HELPERS.EPSG4326;
+
+            var queryParams = _.extend(
+                {},
+                defaultQueryParams,
+                {
+                    "objectIds" : [id],
+                    "inSR" : map.getView().getProjection().getCode().split(':').pop(),
+                    "outSR" : outSrs.getCode().split(':').pop()
+                }
+            )
+
+            var promise = $.Deferred();
+
+
+            fetch(url + (url.indexOf('?') >= 0 ? '&' : '?') + kvp2string(queryParams),
+                {method:'GET', credentials: 'include'}
+            ).then(
+                function (response) {
+                    return response.text();
+                }
+            ).then(
+                function (text) {
+
+                    var features = format.readFeatures(text, {featureProjection: map.getView().getProjection(),
+                        dataProjection: OL_HELPERS.EPSG4326});
+
+                    // generate fid from properties hash to avoid multiple insertion of same feature
+                    // (when max_features strategy is applied and features have no intrisic ID)
+                    features.forEach(function(feature) {
+                        if (feature.get("OBJECTID"))
+                            feature.setId(feature.get("OBJECTID"));
+                        else {
+                            var hashkey = new ol.format.GeoJSON().writeFeature(feature).hashCode();
+                            feature.setId(hashkey);
+                        }
+                    })
+
+                    promise.resolve(features.length>0 && features[0]);
+                }
+            ).catch(function (ex) {
+                    console.warn("GetFeatureById failed on "+layer.getSource().get('name')+" / "+id+" : "+ex);
+                    console.warn(ex);
+                    promise.reject(ex);
+                })
+
+            return promise;
+        }
+
+
+        if (!descriptor.bounds && descriptor.extent) {
+            var ext = [
+                descriptor.extent.xmin,
+                descriptor.extent.ymin,
+                descriptor.extent.xmax,
+                descriptor.extent.ymax
+            ];
+            // take advertised srs; 4326 if none
+            var srs = 'EPSG:'+ (descriptor.extent.spatialReference ? descriptor.extent.spatialReference.wkid : 4326);
+            descriptor.bounds = ol.proj.transformExtent(ext, ol.proj.get(srs), ol.proj.get('EPSG:4326'));
+        }
 
         layer.getSource().set('name', descriptor.name);
         layer.getSource().set('arcgisDescr', descriptor);
+        // override getExtent to take advertised bbox into account first
         layer.getSource().getFullExtent = getArcGISVectorExtent;
 
         return layer;
@@ -1475,11 +2127,23 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         var attribution;
 
 
-        if (mapConfig.type == 'OSM') {
+        if (! mapConfig.type) {
+            urls = 'http://tile.openstreetmap.org/{z}/{x}/{y}.png';
+            var baseMapLayer = new ol.layer.Tile(
+                {title: 'OSM',
+                    type: isBaseLayer?'base':undefined, // necessary for ol3-layerswitcher
+                    source:new ol.source.OSM({
+                        url: urls,
+                        attributions: 'Map tiles & Data by OpenStreetMap, under CC BY SA.'
+                    })
+                });
+
+            callback (baseMapLayer);
+        } else if (mapConfig.type.toLowerCase() == 'osm') {
             urls = mapConfig['url'];
 
             var baseMapLayer = new ol.layer.Tile(
-                {title: mapConfig['title'],
+                {title: mapConfig['title'] || 'OSM',
                     type: isBaseLayer?'base':undefined, // necessary for ol3-layerswitcher
                     source:new ol.source.OSM({
                         url: urls,
@@ -1488,6 +2152,19 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                        */
                     })
                 });
+
+            callback (baseMapLayer);
+
+        } else if (mapConfig.type.toLowerCase() == 'stamen') {
+            var layer = mapConfig['layer'] || 'watercolor';
+            var baseMapLayer = new ol.layer.Tile({
+                title: mapConfig['title'] || 'stamen',
+                type: isBaseLayer?'base':undefined, // necessary for ol3-layerswitcher
+                source: new ol.source.Stamen({
+                    layer: layer,
+                    attributions: 'Map tiles by <a href="http://stamen.com">Stamen Design</a> (<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>). Data by <a href="http://openstreetmap.org">OpenStreetMap</a> (<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>)'
+                })
+            });
 
             callback (baseMapLayer);
 
@@ -1600,10 +2277,234 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             }
             callback (baseMapLayer);
 
+        } else {
+            throw "Unknown basemap type: "+ mapConfig.type;
         }
 
 
 
+    }
+
+
+    OL_HELPERS.SUPPORTED_MIME_TYPES = {
+        'kml': 'application/vnd.google-earth.kml+xml',
+        'gml': 'application/gml+xml',
+        'wms': 'application/vnd.ogc.wms_xml',
+        'wfs': 'application/vnd.ogc.wfs_xml',
+        'wfs3': 'application/vnd.ogc.wfs3',
+        'gpkg': 'application/vnd.opengeospatial.geopackage+sqlite3',
+        'wmts': 'service/wmts',
+        'arcgis_rest': 'application/vnd.esri.arcgis.rest',
+        'geojson' : 'application/geo+json',
+        'json' : 'application/json'
+    };
+
+    /**
+     * Adds layers from a URL to a map
+     * @param map map to add layers to
+     * @param url url of the layer(s) resource
+     * @param mimetype mime type of the URL
+     * @param proxifyFn optional fn to proxify URLs if needed and work around cross-domain issues; takes 2 arguments : url and boolean isImageUrl
+     * @param addLayerCallback callback to be called to add the layer to the map; must return a promise resolved when layer is added
+     */
+    OL_HELPERS.addLayersFromUrl = function(map, url, mimeType, proxifyFn, addLayerCallback) {
+
+        /*
+         mimeType = mimeType || _this.guessMimeType(uri)
+         var proxyUri = FRAGVIZ.UTILS.proxifyUrl(uri)
+         */
+
+
+        /*
+         var layers = _this.mapLayers = []
+         var layerAdder = function (layer) {
+         layer.set('isResourceLayer', true); // mark layer as part of displayedResource
+         layers.push(layer)
+         return map.addLayerWithExtent(layer)
+
+         //if (_this.annotationLayer)
+         //    map.setLayerIndex(_this.annotationLayer, map.getNumLayers());
+         }
+         */
+        var layerAdder = addLayerCallback || function (layer) {
+            return map.addLayerWithExtent(layer);
+        }
+
+
+        var deferredResult = $.Deferred()
+
+        // default proxifyFn is to return URL as is
+        proxifyFn = proxifyFn || function(url) {return url;}
+        var proxyUri = proxifyFn(url);
+
+        //TODO implement done and fail for synchronous calls too
+        if (OL_HELPERS.SUPPORTED_MIME_TYPES['kml'] == mimeType) {
+            return layerAdder(OL_HELPERS.createKMLLayer(proxyUri));
+        } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["gml"] == mimeType) {
+            return layerAdder(OL_HELPERS.createGMLLayer(proxyUri));
+        } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["geojson"] == mimeType || OL_HELPERS.SUPPORTED_MIME_TYPES["json"] == mimeType) {
+            return layerAdder(OL_HELPERS.createGeoJSONLayer(proxyUri));
+        } /*else if (FRAGVIZ.UTILS.MIME.getExtensionMimeType("esri_geojson") == mimeType) {
+         return layerAdder(OL_HELPERS.createEsriGeoJSONLayer(proxyUri))
+         } */ else if (OL_HELPERS.SUPPORTED_MIME_TYPES["wms"] == mimeType) {
+            return OL_HELPERS.withWMSLayers(proxyUri, proxifyFn(url, true), layerAdder, undefined /*layername*/, true/*useTiling*/, map)
+        } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["wmts"] == mimeType) {
+            return OL_HELPERS.withWMTSLayers(proxyUri, layerAdder, undefined /*layername*/, undefined/*projection*/, undefined /*resolution*/);
+        } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["wfs"] == mimeType) {
+            return OL_HELPERS.withFeatureTypesLayers(proxyUri, layerAdder, undefined /*FTname*/, map, true /* useGET */);
+        } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"] == mimeType) {
+            return OL_HELPERS.withArcGisLayers(proxyUri, layerAdder, undefined, undefined, map);
+        } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["wfs3"] == mimeType) {
+            return OL_HELPERS.withWFS3Types(proxyUri, layerAdder, undefined, map, proxifyFn);
+        } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["gpkg"] == mimeType) {
+            return OL_HELPERS.withGeoPackageLayers(proxyUri, layerAdder, undefined, map, proxifyFn);
+        }
+
+        return deferredResult;
+    }
+
+
+
+    /**
+     * Convenient code to create a map with default widgets
+     * config ::= {
+     *      container : [ cssSelector | element ]
+     *      featureInfoPopup : [true | false | FeatureInfoOverlay],
+     *      featureDetailsControl : [true | false | FeatureDetailsControl],
+     *      layerSwitcher : [true | false | HilatsLayerSwitcher],
+     *      styleMap: [undefined | style map with optional 'selected', 'highlight' keys ]
+     *      baseMapLayer
+     * }
+     * @param config
+     */
+    OL_HELPERS.createMap = function(config) {
+
+        var container = typeof config.container == "string" ?
+            $(config.container)[0] :
+            config.container
+
+        if (!container)
+            throw "Container not found: " + config.container;
+
+        var baseMapLayer = config.baseMapLayer;
+
+        // set up featureDetailsControl
+        var featureDetailsControl = undefined;
+        if (typeof config.featureDetailsControl == "object")
+            featureDetailsControl = config.featureDetailsControl
+        else if (config.featureDetailsControl === true)
+            featureDetailsControl = new OL_HELPERS.FeatureDetailsControl()
+
+        // set up dataPopupOverlay
+        var dataPopupOverlay = undefined;
+        if (typeof config.featureInfoPopup == "object")
+            dataPopupOverlay = config.featureInfoPopup
+        else if (config.featureInfoPopup === true)
+            dataPopupOverlay = new OL_HELPERS.FeatureInfoOverlay({
+                element: $("<div class='ol-feature-popup'><div class='popupContent'></div></div>")[0],
+                autoPan: false,
+                offset: [5,5],
+                showDetails: false
+            })
+
+        // set up layerSwitcher
+        var layerSwitcher = undefined;
+        if (typeof config.layerSwitcher == "object")
+            layerSwitcher = config.layerSwitcher
+        else if (config.layerSwitcher === true)
+            layerSwitcher = new ol.control.HilatsLayerSwitcher()
+
+        var controls = [
+            new ol.control.ZoomSlider(),
+            new ol.control.MousePosition()
+        ]
+        layerSwitcher && controls.push(layerSwitcher);
+        featureDetailsControl && controls.push(featureDetailsControl);
+
+        var options = {
+            target: container,
+            layers: [baseMapLayer],
+            controls: controls,
+            //fractionalZoom: true
+
+            loadingDiv: false,
+            overlays: dataPopupOverlay ? [dataPopupOverlay] : undefined,
+            view: new ol.View({
+                // projection attr should be set when creating a baselayer
+                projection: baseMapLayer.getSource().getProjection() || OL_HELPERS.Mercator,
+                extent: baseMapLayer.getExtent(),
+                //center: [0,0],
+                //zoom: 4
+            }),
+            loadingListener: layerSwitcher && _.bind(layerSwitcher.isLoading, layerSwitcher)
+        }
+
+        var map = new OL_HELPERS.LoggingMap(options);
+        // by default stretch the map to the basemap extent or to the world
+        map.getView().fit(
+            baseMapLayer.getExtent() || ol.proj.transformExtent(OL_HELPERS.WORLD_BBOX, OL_HELPERS.EPSG4326, map.getView().getProjection()),
+            {constrainResolution: false}
+        );
+
+
+        map.featureDetailsControl = featureDetailsControl;
+        map.layerSwitcher = layerSwitcher;
+        map.dataPopupOverlay = dataPopupOverlay;
+        map.styleMap = config.styleMap || OL_HELPERS.DEFAULT_STYLEMAP;
+
+        // Add a feature selection interaction
+        if (featureDetailsControl) {
+            var featureSelector = map.featureSelector = new ol.interaction.Select({
+                multi: true,
+                condition: ol.events.condition.click,
+                style: function (feature, resolution) {
+                    return map.styleMap && map.styleMap.selected;
+                },
+                filter: function (feature, layer) {
+                    return layer != null // exclude unmanaged layers
+                        && feature.get('type') != 'capture'
+                }
+            });
+            map.addInteraction(featureSelector);
+            featureSelector.on('select', function (evt) {
+                map.featureDetailsControl.setFeatures(featureSelector.getFeatures());
+            })
+        }
+
+
+        // Add a feature hover interaction
+        var highlighter = new ol.interaction.Select({
+            style: function(feature, resolution) {
+                return map.styleMap && map.styleMap.highlight;
+            },
+            toggleCondition : function(evt) {return false},
+            multi: true,
+            condition: ol.events.condition.pointerMove
+        });
+        highlighter.on('select', function(evt) {
+            var hit = highlighter.getFeatures().getLength();
+            $(map.getTarget()).css("cursor", hit ? 'pointer' : '');
+        })
+        map.addInteraction(highlighter);
+
+
+        // force a reload of all vector sources on projection change
+        map.getView().on('change:projection', function() {
+            map.getLayers().forEach(function(layer) {
+                if (layer instanceof ol.layer.Vector) {
+                    layer.getSource().clear();
+                }
+            });
+        });
+        map.on('change:view', function() {
+            map.getLayers().forEach(function(layer) {
+                if (layer instanceof ol.layer.Vector) {
+                    layer.getSource().clear();
+                }
+            });
+        });
+
+        return map;
     }
 
 }) ();

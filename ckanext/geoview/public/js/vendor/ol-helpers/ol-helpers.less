@@ -6,22 +6,96 @@
     position: absolute;
   }
 
+  .ol-feature-popup {
+    background-color: rgba(0,0,0,0.8);
+    border-radius: 2px;
+    color: white;
+    margin-top: 5px;
+    margin-left: 5px;
+
+    .popupContent > div {
+      padding: 3px;
+    }
+
+    .popupContent > table {
+      margin: 3px;
+      .propKey {
+        text-align: right;
+        padding-right: 5px;
+      }
+      .propValue {
+        text-align: left;
+      }
+    }
+
+    .name {
+      font-weight: bold;
+      border-bottom: 1px solid #e5e4e7;
+    }
+  }
+
+
+  .ol-feature-details {
+      position: absolute;
+
+      background-color: rgba(0,0,0,0.75);
+      border-radius: 2px;
+      color: white;
+      margin: 5px;
+
+      right: 0px;
+      max-width: 30%;
+      max-height: 100%;
+      overflow: auto;
+      div.featureDetails {
+        > div {
+          padding: 6px;
+          text-align: left;
+        }
+
+        > .content {
+          > table {
+            margin: 3px;
+
+            .propKey {
+              text-align: right;
+              padding-right: 5px;
+              color: #C5C5C5;
+            }
+            .propValue {
+              text-align: left;
+            }
+          }
+        }
+
+        > .name {
+          position: sticky;
+          top: 0px;
+          background-color: rgba(0, 0, 0, 0.75);
+          font-weight: bold;
+          border-bottom: 1px solid #e5e4e7;
+          height: 25px;
+          min-width: 150px;
+        }
+      }
+    }
+
   .layer-switcher {
 
     .stacked-layers {
       position: absolute;
-      right: 10px;
-      top: 40px;
+      left: 10px;
+      top: 5px;
       z-index: 100;
     }
 
     .header {
       display: none;
       position: absolute;
-      right: 12px;
-      top: 40px;
+      left: 12px;
+      top: 5px;
       z-index: 90;
-      padding: 5px 45px 5px 5px;
+      padding: 5px 5px 5px 43px;
       background-color: black;
 
       .baseLayerSelector {
@@ -43,8 +117,8 @@
       overflow: overlay;
       max-height: ~"calc(100% - 50px)";
       min-width: 150px;
-      right: 10px;
-      top: 40px;
+      left: 10px;
+      top: 5px;
       z-index: 80;
 
       .panel {

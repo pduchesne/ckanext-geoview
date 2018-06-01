@@ -34,7 +34,7 @@
  }
 
 
-
+ /*
  #data-preview .ol-viewport .layer-switcher {
      position: absolute;
      top: 40px;
@@ -69,6 +69,15 @@
      margin: 0;
  }
 
+  #data-preview .ol-viewport .layer-switcher .layer-list {
+     top: 0px;
+     right: 0px;
+     position: initial;
+     border-radius: 0;
+     padding: 0;
+ }
+ */
+
  #data-preview .ol-viewport .popupContainer {
      background-color: rgba(0,0,0,0.7);
      color: white;
@@ -87,14 +96,6 @@
  #data-preview .ol-viewport .popupContainer .name {
      font-weight: bold;
      border-bottom: 1px solid #e5e4e7;
- }
-
- #data-preview .ol-viewport .layer-switcher .layer-list {
-     top: 0px;
-     right: 0px;
-     position: initial;
-     border-radius: 0;
-     padding: 0;
  }
 
  #data-preview .ol-viewport .ol-mouse-position {
