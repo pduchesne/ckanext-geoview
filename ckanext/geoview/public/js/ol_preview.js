@@ -58,6 +58,8 @@
 
                 } else if (mapConfig.type == 'custom') {
                     mapConfig.type = 'XYZ'
+                } else if (mapConfig.type == 'wmts') {
+                    mapConfig.url = '/basemap_service/'+encodeURIComponent(mapConfig.title);
                 } else if (!mapConfig.type || mapConfig.type.toLowerCase() == 'osm') {
                     // default to Stamen base map
                     mapConfig.type == 'OSM';

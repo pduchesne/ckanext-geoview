@@ -84,7 +84,10 @@ class GeoViewBase(p.SingletonPlugin):
 
     def configure(self, config):
         basemapConfigFile = config.get('ckanext.geoview.basemaps', None)
-        self.basemapsConfig = basemapConfigFile and load_basemaps(basemapConfigFile)
+        if basemapConfigFile:
+            self.basemapsConfig = load_basemaps(basemapConfigFile)
+            basemap_map = dict( ( (lambda c: c['title'])(conf), conf) for conf in self.basemapsConfig)
+            config['ckanext.geoview.basemaps_map'] = basemap_map
 
     def update_config(self, config):
         p.toolkit.add_public_directory(config, 'public')

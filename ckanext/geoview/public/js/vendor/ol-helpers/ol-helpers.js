@@ -1430,7 +1430,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                                                 throw "Not Implemented";
                                             }
 
-                                            layerProcessor(ftLayer)
+                                            layerProcessor && layerProcessor(ftLayer)
                                         }
 
                                     })
@@ -1448,7 +1448,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 })
 
                 $.when.apply($, deferredLayers).then(function() {
-                    deferredResult.resolve(deferredLayers)
+                    deferredResult.resolve(Array.from(arguments))
                 })
 
             },
@@ -1618,13 +1618,13 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                             ftLayer.getSource().set('ftDescr', candidate);
                             ftLayer.getSource().getFullExtent = getFT3SourceExtent;
 
-                            layerProcessor(ftLayer);
+                            layerProcessor && layerProcessor(ftLayer);
 
                             deferredLayer.resolve(ftLayer);
                         })
 
                         $.when.apply($, deferredLayers).then(function() {
-                            deferredResult.resolve(deferredLayers)
+                            deferredResult.resolve(Array.from(arguments))
                         })
 
                     },
@@ -1702,7 +1702,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                             mapLayer.getSource().set('mlDescr', candidate);
                             mapLayer.getSource().getFullExtent = getWMSSourceExtent;
 
-                            layerProcessor(mapLayer)
+                            layerProcessor && layerProcessor(mapLayer)
 
                             deferredLayer.resolve(mapLayer)
                         } catch (err) {
@@ -1722,7 +1722,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
                 $.when.apply($, deferredLayers).then(
                     function() {
-                        deferredResult.resolve(deferredLayers)
+                        deferredResult.resolve(Array.from(arguments))
                     },
                     function(err) {
                         deferredResult.reject(err)
@@ -1740,7 +1740,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     }
 
 
-    OL_HELPERS.withWMTSLayers = function (capaUrl, layerProcessor, layerName, projection, resolutions) {
+    OL_HELPERS.withWMTSLayers = function (capaUrl, layerProcessor, layerName, projection, resolutions, matrixSet) {
 
         var deferredResult = $.Deferred()
 
@@ -1749,6 +1749,17 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         OL_HELPERS.parseWMTSCapas(
             capaUrl,
             function (capas) {
+
+                // make sure TileMatrix ids are not prefixed with TileMatrixSet ids
+                capas.Contents.Layer.forEach(function(l) {
+                    l.TileMatrixSetLink.forEach(function(tmslk) {
+                        tmslk.TileMatrixSetLimits.forEach(function(tmslmts) {
+                            if (tmslmts.TileMatrix.startsWith(tmslk.TileMatrixSet+':')) {
+                                tmslmts.TileMatrix = tmslmts.TileMatrix.substring(tmslk.TileMatrixSet.length+1);
+                            }
+                        })
+                    })
+                });
 
                 var candidates = capas['Contents']['Layer']
                 if (layerName) candidates = candidates.filter(function (layer) {
@@ -1770,6 +1781,8 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                         // WMTS.optionsFromCapabilities does not accept undefined projection value in its params
                         if (projection)
                             params.projection = projection
+                        else if (matrixSet)
+                            params.matrixSet = matrixSet
 
                         var options = ol.source.WMTS.optionsFromCapabilities(capas, params);
 
@@ -1804,7 +1817,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                         mapLayer.getSource().set('mlDescr', candidate);
                         mapLayer.getSource().getFullExtent = getWMTSSourceExtent;
 
-                        layerProcessor(mapLayer)
+                        layerProcessor && layerProcessor(mapLayer)
 
                         deferredLayer.resolve(mapLayer)
                     } catch (err) {
@@ -1813,7 +1826,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 })
 
                 $.when.apply($, deferredLayers).then(function() {
-                    deferredResult.resolve(deferredLayers)
+                    deferredResult.resolve(Array.from(arguments));
                 })
 
             },
@@ -1933,7 +1946,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                     var deferredLayer = $.Deferred();
                     deferredLayers.push(deferredLayer);
                     var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/query", descriptor, true, map)
-                    layerProcessor(newLayer);
+                    layerProcessor && layerProcessor(newLayer);
 
                     deferredLayer.resolve(newLayer);
                 } else if (descriptor.type == "Group Layer") {
@@ -1941,11 +1954,11 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 } else if (!descriptor.type && descriptor.layers) {
                     var isFirst = true
                     $_.each(descriptor.layers, function (layer, idx) {
-                        var deferredLayer = $.Deferred();
-                        deferredLayers.push(deferredLayer);
                         if (!layer.subLayerIds) {
+                            var deferredLayer = $.Deferred();
+                            deferredLayers.push(deferredLayer);
                             var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/" + layer.id + "/query", layer, isFirst, map)
-                            layerProcessor(newLayer)
+                            layerProcessor && layerProcessor(newLayer)
                             isFirst = false;
                             deferredLayer.resolve(newLayer);
                         }
@@ -1953,7 +1966,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 }
 
                 $.when.apply($, deferredLayers).then(function() {
-                    deferredResult.resolve(deferredLayers)
+                    deferredResult.resolve(Array.from(arguments))
                 })
 
             }
@@ -2219,21 +2232,32 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             callback (baseMapLayer);
         }  else if (mapConfig.type == 'wmts') {
 
+            var layerCallback = function(layer, title_suffix) {
+                layer.set('type', 'base');
+                mapConfig['dimensions'] && layer.getSource().updateDimensions(mapConfig['dimensions']);
+                mapConfig['title'] && layer.set('title', mapConfig['title'] + (title_suffix ?  (' '+title_suffix) : ''));
+                /* TODO
+                 layer.options.attribution = mapConfig.attribution
+                 */
+                callback (layer);
+            };
+
             OL_HELPERS.withWMTSLayers(
                 mapConfig['url'],
-                function(layer) {
-                    layer.set('type', 'base');
-                    mapConfig['dimensions'] && layer.getSource().updateDimensions(mapConfig['dimensions']);
-                    mapConfig['title'] && layer.set('title', mapConfig['title']);
-                    /* TODO
-                    layer.options.attribution = mapConfig.attribution
-*/
-                    callback (layer);
-                },
+                undefined, //layerCallback,
                 mapConfig['layer'],
                 mapConfig['srs'],
-                mapConfig['resolutions'] && eval(mapConfig['resolutions'])
-            )
+                    mapConfig['resolutions'] && eval(mapConfig['resolutions'],
+                    mapConfig['matrixSet'])
+            ).then(function(layers) {
+                    if (layers.length <= 1)
+                        layers.forEach(layerCallback);
+                    else {
+                        layers.forEach(function(layer) {
+                            layerCallback(layer, layer.get('title'))
+                        });
+                    }
+                })
 
         } else if (mapConfig.type == 'wms') {
             urls = mapConfig['url'];
@@ -2349,7 +2373,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
          } */ else if (OL_HELPERS.SUPPORTED_MIME_TYPES["wms"] == mimeType) {
             return OL_HELPERS.withWMSLayers(proxyUri, proxifyFn(url, true), layerAdder, undefined /*layername*/, true/*useTiling*/, map)
         } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["wmts"] == mimeType) {
-            return OL_HELPERS.withWMTSLayers(proxyUri, layerAdder, undefined /*layername*/, undefined/*projection*/, undefined /*resolution*/);
+            return OL_HELPERS.withWMTSLayers(proxyUri, layerAdder, undefined /*layername*/, undefined/*projection*/, undefined /*resolution*/, undefined /*matrixSet*/);
         } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["wfs"] == mimeType) {
             return OL_HELPERS.withFeatureTypesLayers(proxyUri, layerAdder, undefined /*FTname*/, map, true /* useGET */);
         } else if (OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"] == mimeType) {
