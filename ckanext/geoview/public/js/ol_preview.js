@@ -162,6 +162,7 @@
 
                      */
 
+                    var validUrlPath = originalUrl.split(/[?#]/, 2)[0];
                     var deferredResult = OL_HELPERS.addLayersFromUrl(
                         map,
                         originalUrl,
@@ -170,13 +171,14 @@
                             if (isImageUrl)
                                 return url;
                             else {
-                                if (originalUrl != url)
+                                if (validUrlPath != url.split(/[?#]/, 2)[0])
                                     throw "Cannot proxy URL - not original resource URL : "+url;
 
                                 if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wms"] ||
                                     mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wfs"] ||
                                     mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wmts"] ||
                                     mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"]) {
+                                    // reminder : the proxyService will remove OGC parameters from proxied URL
                                     return proxyServiceUrl || url;
                                 } else
                                     return proxyUrl || url;
@@ -184,6 +186,10 @@
                         },
                         $_.bind($this.addLayer, $this)
                     );
+
+                    deferredResult.fail(function(err) {
+                        // TODO display some error message
+                    })
                 }
 
                 // Init map with first basemap from config
