@@ -17,11 +17,11 @@
     "fetch": "^2.0.3"
   },
   "homepage": "https://github.com/pduchesne/ol-helpers",
-  "_release": "d3de1f310c",
+  "_release": "969525d353",
   "_resolution": {
     "type": "branch",
     "branch": "master",
-    "commit": "d3de1f310cedeb55fa8a5b8ad120a3f4a187a380"
+    "commit": "969525d353ae0defae9d9173f4bcb6af401fddfe"
   },
   "_source": "git://github.com/pduchesne/ol-helpers.git",
   "_target": "*",

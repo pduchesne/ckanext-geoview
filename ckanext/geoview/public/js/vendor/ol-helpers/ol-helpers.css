@@ -26,6 +26,12 @@
   font-weight: bold;
   border-bottom: 1px solid #e5e4e7;
 }
+.ol-viewport .ol-mouse-position {
+  background-color: #FFFFFFB0;
+  padding: 1px 5px;
+  font-family: "Courier New", courier, monospace;
+  white-space: pre;
+}
 .ol-viewport .ol-feature-details {
   position: absolute;
   background-color: rgba(0, 0, 0, 0.75);
