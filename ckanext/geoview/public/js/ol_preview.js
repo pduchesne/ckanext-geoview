@@ -98,6 +98,8 @@
                 var originalUrl = preload_resource.url;
                 var proxyUrl = this.options.proxy_url;
                 var proxyServiceUrl = this.options.proxy_service_url;
+                var service_resource_name = preload_resource.service_resource_name;
+
                 var format = preload_resource.format && preload_resource.format.toLocaleLowerCase();
                 if (format == "esri rest")
                     format = "acrgis_rest"
@@ -167,6 +169,7 @@
                         map,
                         originalUrl,
                         mimeType,
+                        service_resource_name !== undefined ? service_resource_name.split(',') : undefined,
                         function(url, isImageUrl) {
                             if (isImageUrl)
                                 return url;
