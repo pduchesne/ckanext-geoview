@@ -29,12 +29,15 @@ if (!ol.source.State) {
     };
 }
 
-var OLgetState = ol.source.Vector.prototype.getState
+/* override source state property with internal value to have finer event listening on layer loading */
+var OLgetState = ol.source.Vector.prototype.getState;
 ol.source.Vector.prototype.getState = function() {
-    return this.HL_state || OLgetState.call(this);
+    return this.get('HL_state') || OLgetState.call(this);
 };
 ol.source.Vector.prototype.setState = function(state) {
-    this.HL_state = state;
+    this.set('HL_state', state);
+
+    // listeners on 'change' will not trigger on 'change:HL_state'. Must issue a 'change' explicitly
     this.changed();
 };
 
@@ -149,6 +152,14 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
     var isNumeric = function(n) {
         return !isNaN(parseFloat(n)) && isFinite(n);
+    }
+
+    var unnamespace = function(str) {
+        if (!str)
+            return str;
+
+        var idx = str.indexOf(':');
+        return idx < 0 ? str : str.substring(idx+1);
     }
 
     // When possible, override decimal parsers, as some capabilities use commas as decimal separator
@@ -432,16 +443,34 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         var _this = this
 
         var layerStarts = function(event) {
-            var loadingObj = event.tile || event.target || this;
+            var loadingObj = event.tile || event.target || layer.getSource();
+
+            if (event.tile) {
+                layer.getSource().loadingTiles = layer.getSource().loadingTiles || [];
+                layer.getSource().loadingTiles.push(event.tile);
+            }
+
+            if (layer.getSource().get('HL_state') != ol.source.State.LOADING)
+                layer.getSource().set('HL_state', ol.source.State.LOADING);
+
             if (_this.loadingObjects.indexOf(loadingObj) < 0) {
                 _this.loadingObjects.push(loadingObj)
             }
-            _this.updateLoadingStatus()
+            _this.updateLoadingStatus();
         }
 
         var layerEnds = function(event) {
-            var loadingObj = event.tile || event.target || this;
+            var loadingObj = event.tile || event.target || layer.getSource();
 
+            if (event.tile && layer.getSource().loadingTiles) {
+                var tileIdx = layer.getSource().loadingTiles.indexOf(event.tile);
+                tileIdx >= 0 && layer.getSource().loadingTiles.splice(tileIdx, 1);
+            }
+
+            if (!layer.getSource().loadingTiles || layer.getSource().loadingTiles.length == 0) {
+                if (layer.getSource().get('HL_state') != ol.source.State.READY)
+                    layer.getSource().set('HL_state', ol.source.State.READY);
+            }
 
             var es_idx = _this.erroredSources.indexOf(loadingObj);
             if (this.getState() == ol.source.State.ERROR) {
@@ -595,6 +624,8 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
     };
 
+    var urlRegex = /[-a-zA-Z0-9@:%_\+.~#?&//=]{2,256}\.[a-z]{2,4}\b(\/[-a-zA-Z0-9@:%_\+.~#?&//=]*)?/gi
+
     OL_HELPERS.FeatureDetailsControl.renderFeature = function(feature, container) {
         var htmlContent;
 
@@ -606,8 +637,12 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             htmlContent += "<div class='content'><table>";
             var geomName = feature.getGeometryName();
             feature.getKeys().forEach(function(prop) {
-                if (prop != geomName)
-                    htmlContent += "<tr><td class='propKey'>" + prop + "</td><td class='propValue'>" + feature.get(prop) + "</td></tr></div>"
+                if (prop != geomName) {
+                    var value = feature.get(prop);
+                    if ((typeof value == 'string') && value.match(urlRegex))
+                        value = "<a href='"+value+"' target='_blank'>"+value+"</a>";
+                    htmlContent += "<tr><td class='propKey'>" + prop + "</td><td class='propValue'>" + value + "</td></tr></div>"
+                }
             })
             htmlContent += "</table></div>";
 
@@ -1168,6 +1203,10 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 ftNames = undefined
         }
 
+        // remove namespaces from feature type names
+        // name coming from ISO md is sometimes namespaced, while actual feature type ID is not
+        ftNames && (ftNames = ftNames.map(unnamespace));
+
         var deferredResult = $.Deferred()
         url = OL_HELPERS.cleanOGCUrl(url)
         fetchWFSCapas(
@@ -1184,7 +1223,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
                 var candidates = capas.featureTypes
                 if (ftNames) candidates = capas.featureTypes.filter(function (ft) {
-                    return ftNames.indexOf(ft.name) >= 0;
+                    return ftNames.indexOf(unnamespace(ft.name)) >= 0;
                 })
 
                 var deferredLayers = []
@@ -1738,6 +1777,10 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 layerNames = undefined
         }
 
+        // remove namespaces from layer names
+        // name coming from ISO md is sometimes namespaced, while actual layer ID is not
+        layerNames && (layerNames = layerNames.map(unnamespace));
+
         parseWMSCapas(
             capaUrl,
             undefined, /* version */
@@ -1750,7 +1793,10 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                 var isFirst = true;
                 var processLayerCandidate = function (candidate) {
 
-                    if (candidate.Name && (!layerNames || layerNames.indexOf(candidate.Name) >= 0) ) {
+                    if (candidate.Name &&
+                        (!layerNames ||
+                         layerNames.indexOf(unnamespace(candidate.Name)) >= 0)
+                       ) {
                         var deferredLayer = $.Deferred()
                         deferredLayers.push(deferredLayer)
 
@@ -2650,10 +2696,11 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
      * @param map map to add layers to
      * @param url url of the layer(s) resource
      * @param mimetype mime type of the URL
+     * @param resourceNames the names of the resources to add. If undefined, all available resources are added.
      * @param proxifyFn optional fn to proxify URLs if needed and work around cross-domain issues; takes 2 arguments : url and boolean isImageUrl
      * @param addLayerCallback callback to be called to add the layer to the map; must return a promise resolved when layer is added
      */
-    OL_HELPERS.addLayersFromUrl = function(map, url, mimeType, proxifyFn, addLayerCallback) {
+    OL_HELPERS.addLayersFromUrl = function(map, url, mimeType, resourceNames, proxifyFn, addLayerCallback) {
 
         /*
          mimeType = mimeType || _this.guessMimeType(uri)
@@ -2679,9 +2726,12 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
         var deferredResult = $.Deferred()
 
-        var parsedUrl = url.split('#', 2);
-        var url = parsedUrl[0];
-        var fragmentsNames = parsedUrl.length > 1 ? parsedUrl[1].split(',') : undefined;
+        if (resourceNames === undefined) {
+            var parsedUrl = url.split('#', 2);
+            var url = parsedUrl[0];
+            resourceNames = parsedUrl.length > 1 ? parsedUrl[1].split(',') : undefined;
+        } else if (!Array.isArray(resourceNames))
+            resourceNames = [resourceNames];
 
         // default proxifyFn is to return URL as is
         proxifyFn = proxifyFn || function(url) {return url;}
@@ -2702,17 +2752,17 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
          return layerAdder(OL_HELPERS.createEsriGeoJSONLayer(proxyUri))
          } */
           else if (matchExtension("wms")) {
-            return OL_HELPERS.withWMSLayers(proxyUri, proxifyFn(url, true), layerAdder, fragmentsNames /*layername*/, true/*useTiling*/, map)
+            return OL_HELPERS.withWMSLayers(proxyUri, proxifyFn(url, true), layerAdder, resourceNames /*layername*/, true/*useTiling*/, map)
         } else if (matchExtension("wmts")) {
-            return OL_HELPERS.withWMTSLayers(proxyUri, layerAdder, fragmentsNames /*layername*/, undefined/*projection*/, undefined /*resolution*/, undefined /*matrixSet*/);
+            return OL_HELPERS.withWMTSLayers(proxyUri, layerAdder, resourceNames /*layername*/, undefined/*projection*/, undefined /*resolution*/, undefined /*matrixSet*/);
         } else if (matchExtension("wfs")) {
-            return OL_HELPERS.withFeatureTypesLayers(proxyUri, layerAdder, fragmentsNames /*FTname*/, map, true /* useGET */);
+            return OL_HELPERS.withFeatureTypesLayers(proxyUri, layerAdder, resourceNames /*FTname*/, map, true /* useGET */);
         } else if (matchExtension("arcgis_rest")) {
-            return OL_HELPERS.withArcGisLayers(proxyUri, layerAdder, fragmentsNames /*layername*/, undefined, map);
+            return OL_HELPERS.withArcGisLayers(proxyUri, layerAdder, resourceNames /*layername*/, undefined, map);
         } else if (matchExtension("wfs3")) {
-            return OL_HELPERS.withWFS3Types(proxyUri, layerAdder, fragmentsNames /*FTname*/, map, proxifyFn);
+            return OL_HELPERS.withWFS3Types(proxyUri, layerAdder, resourceNames /*FTname*/, map, proxifyFn);
         } else if (matchExtension("gpkg")) {
-            return OL_HELPERS.withGeoPackageLayers(proxyUri, layerAdder, fragmentsNames /*FTname*/, map, proxifyFn);
+            return OL_HELPERS.withGeoPackageLayers(proxyUri, layerAdder, resourceNames /*FTname*/, map, proxifyFn);
         }
 
         return deferredResult;

@@ -24,7 +24,7 @@ ol.control.HilatsLayerSwitcher = function(opt_options) {
 
     this.header = $("<div class='header'></div>")
 
-    var element = $("<div class='ol-unselectable ol-control layer-list'></div>");
+    var layerList = $("<div class='ol-unselectable ol-control layer-list'><div class='padder'></div></div>");
 
     var progressIndicator =  $("<div class='stacked-layers'>" +
                                 "<div class='stacked-layer layer-1'/>" +
@@ -33,10 +33,10 @@ ol.control.HilatsLayerSwitcher = function(opt_options) {
     this.parentElement
         .append(progressIndicator)
         .append(this.header)
-        .append(element);
+        .append(layerList);
 
 
-    this.panel = $("<div class='panel'></div>").appendTo(element)[0];
+    this.panel = $("<div class='panel'></div>").appendTo(layerList)[0];
 
     ol.control.HilatsLayerSwitcher.enableTouchScroll_(this.panel);
 
@@ -108,14 +108,15 @@ ol.control.HilatsLayerSwitcher.prototype.renderBaseLayerSelector = function() {
 ol.control.HilatsLayerSwitcher.prototype.renderBaseLayer = function(baselayer) {
     var $select = $(this.header).find(".baseLayerSelector select");
 
+    // use title to identify basemaps; ol_uid is not available in non-debug OL
     $select.append(
-        $('<option/>', {value: baselayer.ol_uid})
+        $('<option/>', {value: baselayer.get('title')})
             .prop("layer", baselayer)
             .text(baselayer.get('title'))
     )
 
     if (baselayer.getVisible())
-        $select.val(baselayer.ol_uid);
+        $select.val(baselayer.get('title'));
 
 };
 
@@ -194,7 +195,7 @@ ol.control.HilatsLayerSwitcher.prototype.renderLayer = function(lyr, container) 
 
     var li = $("<li></li>")
 
-    var label = $("<label></label>").text(lyr.get('title'))
+    var label = $("<span class='title'></span>").text(lyr.get('title'))
     if (lyr.getLayers) {
 
         li.append(label.addClass('group'));
@@ -209,7 +210,22 @@ ol.control.HilatsLayerSwitcher.prototype.renderLayer = function(lyr, container) 
             .attr("type", 'checkbox')
             .change(function(e) {this_.setVisible_(lyr, e.target.checked)})
             .appendTo(li);
-        li.append(label)
+        li.append(label);
+
+        var stateListener = function() {
+            if (lyr.getSource().getState() == ol.source.State.LOADING ||
+                lyr.getSource().get('HL_state') == ol.source.State.LOADING) {
+                li.append("<div class='state simple_loader' style='display: inline-block; float:right'></div>")
+            } else if (lyr.getSource().getState() == ol.source.State.ERROR) {
+                li.append("<i class='state fa fa-error' />")
+            } else {
+                li.find(".state").remove();
+            }
+        };
+
+        stateListener();
+
+        lyr.getSource().on('change:HL_state', stateListener);
     }
 
     if (container)
