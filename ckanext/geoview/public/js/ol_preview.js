@@ -102,7 +102,7 @@
 
                 var format = preload_resource.format && preload_resource.format.toLocaleLowerCase();
                 if (format == "esri rest")
-                    format = "acrgis_rest"
+                    format = "arcgis_rest"
                 var mimeType = OL_HELPERS.SUPPORTED_MIME_TYPES[format];
 
                 if (this.options.resourceView)
