@@ -43,7 +43,7 @@
                 return this.map.addLayerWithExtent(resourceLayer)
             },
 
-            _commonBaseLayer: function(mapConfig, callback, module) {
+            _commonBaseLayer: function(mapConfig) {
 
                 if (mapConfig.type == 'mapbox') {
                     // MapBox base map
@@ -67,7 +67,7 @@
                     mapConfig.attribution = 'Map tiles & Data by OpenStreetMap, under CC BY SA.';
                 }
 
-                return OL_HELPERS.createLayerFromConfig(mapConfig, true, callback);
+                return OL_HELPERS.createLayerFromConfig(mapConfig, true);
             },
 
             _onReady: function () {
@@ -170,12 +170,12 @@
                         originalUrl,
                         mimeType,
                         service_resource_name !== undefined ? service_resource_name.split(',') : undefined,
-                        function(url, isImageUrl) {
+                        function (url, isImageUrl) {
                             if (isImageUrl)
                                 return url;
                             else {
                                 if (validUrlPath != url.split(/[?#]/, 2)[0])
-                                    throw "Cannot proxy URL - not original resource URL : "+url;
+                                    throw "Cannot proxy URL - not original resource URL : " + url;
 
                                 if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wms"] ||
                                     mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wfs"] ||
@@ -190,37 +190,50 @@
                         $_.bind($this.addLayer, $this)
                     );
 
-                    deferredResult.fail(function(err) {
-                        // TODO display some error message
+                    deferredResult.fail(function (err) {
+                        console.warn(err);
+                        map.logError("Failed to add layer(s) : "+err);
                     })
                 }
 
                 // Init map with first basemap from config
-                this._commonBaseLayer(
-                    baseMapsConfig[0], // take first basemap def
-                    function(layer) {
-                        baseMapsConfig[0].$ol_layer = layer
+                this._commonBaseLayer(baseMapsConfig[0]) // take first basemap def
+                    .then(function (layers) {
+
+                        if (layers.length > 1)
+                        // TODO unintended limitation
+                            throw "First basemap config must yield one single layer"
+
+                        baseMapsConfig[0].$ol_layer = layers[0]
 
                         // once basemap is instantiated, create the Map with it
-                        createMapFn(layer)
+                        createMapFn(layers[0])
 
                         // add all configured basemap layers
                         if (baseMapsConfig.length > 1) {
                             // add other basemaps if any
-                            for (var idx=1;idx<baseMapsConfig.length;idx++) {
-                                $this._commonBaseLayer(
-                                    baseMapsConfig[idx],
-                                    function(layer) {
-                                        layer.setVisible(false)
-                                        // insert all basemaps at the bottom
-                                        $this.map.getLayers().insertAt(0, layer)
-                                    });
+                            for (var idx = 1; idx < baseMapsConfig.length; idx++) {
+                                (function(idx) {
+                                    $this._commonBaseLayer(baseMapsConfig[idx])
+                                        .then(function (layers) {
+                                            layers.forEach(
+                                                function (layer) {
+                                                    layer.setVisible(false)
+                                                    // insert all basemaps at the bottom
+                                                    $this.map.getLayers().insertAt(0, layer)
+                                                });
+                                        }).fail(function(err) {
+                                            var msg = "Failed to add basemap["+idx+"] from "+baseMapsConfig[idx].url;
+                                            $this.map.logError(msg);
+                                            console.warn(msg);
+                                            console.warn(err);
+                                        });
+                                })(idx);
                             }
                         }
-
+                    }).fail(function(err) {
+                        console.warn("Failed to init map : "+err);
                     });
-
-
             }
         }
     });
