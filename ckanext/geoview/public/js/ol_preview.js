@@ -175,9 +175,15 @@
                                 return url;
                             else {
                                 /* Arcgis proxying would require proxy to be able to forward subpath queries
-                                 let's drop proxy usage as of now, and rely on cross-origin acceptance */
+                                   let's drop proxy usage as of now, and rely on cross-origin acceptance */
                                 if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"]) {
-                                    return url;
+                                    // if resource URL is not HTTPS, remove protocol and hope that
+                                    // distant resource has a protocol matching CKAN
+                                    // this would be solved by using the proxy, cf remark above
+                                    if (url.startsWith('http://') )
+                                        return url.substring(url.indexOf('//'));
+                                    else
+                                        return url;
                                 }
 
                                 var urlPath = url.split(/[?#]/, 2)[0];
