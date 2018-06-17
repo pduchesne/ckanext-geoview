@@ -174,7 +174,14 @@
                             if (isImageUrl)
                                 return url;
                             else {
-                                if (validUrlPath != url.split(/[?#]/, 2)[0])
+                                /* Arcgis proxying would require proxy to be able to forward subpath queries
+                                 let's drop proxy usage as of now, and rely on cross-origin acceptance */
+                                if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"]) {
+                                    return url;
+                                }
+
+                                var urlPath = url.split(/[?#]/, 2)[0];
+                                if (urlPath != validUrlPath /* urlPath.startsWith(validUrlPath) */ )
                                     throw "Cannot proxy URL - not original resource URL : " + url;
 
                                 if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wms"] ||
