@@ -4,10 +4,12 @@ import os
 
 from logging import getLogger
 
-from pylons import config
+import ckantoolkit as toolkit
+
 from ckan.common import json
 
 from ckan import plugins as p
+
 import ckan.lib.helpers as h
 
 try:
@@ -15,8 +17,8 @@ try:
 except ImportError:
     from ckan.lib.datapreview import _on_same_domain as on_same_domain
 
-ignore_empty = p.toolkit.get_validator('ignore_empty')
-boolean_validator = p.toolkit.get_validator('boolean_validator')
+ignore_empty = toolkit.get_validator('ignore_empty')
+boolean_validator = toolkit.get_validator('boolean_validator')
 
 log = getLogger(__name__)
 
@@ -46,7 +48,7 @@ def get_common_map_config():
         base map (ie those starting with 'ckanext.spatial.common_map.')
     '''
     namespace = 'ckanext.spatial.common_map.'
-    return dict([(k.replace(namespace, ''), v) for k, v in config.iteritems()
+    return dict([(k.replace(namespace, ''), v) for k, v in toolkit.config.iteritems()
                  if k.startswith(namespace)])
 
 def load_basemaps(basemapsFile):
@@ -66,13 +68,13 @@ def get_openlayers_viewer_config():
         OpenLayers viewer (ie those starting with 'ckanext.geoview.ol_viewer.')
     '''
     namespace = 'ckanext.geoview.ol_viewer.'
-    return dict([(k.replace(namespace, ''), v) for k, v in config.iteritems()
+    return dict([(k.replace(namespace, ''), v) for k, v in toolkit.config.iteritems()
                  if k.startswith(namespace)])
 
 
 class GeoViewBase(p.SingletonPlugin):
     '''This base class is for view extensions. '''
-    if p.toolkit.check_ckan_version(min_version='2.3'):
+    if toolkit.check_ckan_version(min_version='2.3'):
         p.implements(p.IResourceView, inherit=True)
     else:
         p.implements(p.IResourcePreview, inherit=True)
@@ -83,15 +85,15 @@ class GeoViewBase(p.SingletonPlugin):
     same_domain = False
 
     def configure(self, config):
-        basemapConfigFile = config.get('ckanext.geoview.basemaps', None)
+        basemapConfigFile = toolkit.config.get('ckanext.geoview.basemaps', None)
         self.basemapsConfig = basemapConfigFile and load_basemaps(basemapConfigFile)
 
     def update_config(self, config):
-        p.toolkit.add_public_directory(config, 'public')
-        p.toolkit.add_template_directory(config, 'templates')
-        p.toolkit.add_resource('public', 'ckanext-geoview')
+        toolkit.add_public_directory(config, 'public')
+        toolkit.add_template_directory(config, 'templates')
+        toolkit.add_resource('public', 'ckanext-geoview')
 
-        self.proxy_enabled = 'resource_proxy' in config.get('ckan.plugins', '')
+        self.proxy_enabled = 'resource_proxy' in toolkit.config.get('ckan.plugins', '')
 
 
 class OLGeoView(GeoViewBase):
@@ -128,7 +130,7 @@ class OLGeoView(GeoViewBase):
                 'title': 'Map viewer (OpenLayers)',
                 'icon': 'globe',
                 'iframed': True,
-                'default_title': p.toolkit._('Map viewer'),
+                'default_title': toolkit._('Map viewer'),
                 'schema': {
                     'feature_hoveron': [ignore_empty, boolean_validator],
                     'feature_style': [ignore_empty]
@@ -147,7 +149,7 @@ class OLGeoView(GeoViewBase):
         if not format_lower:
             return False
 
-        view_formats = config.get('ckanext.geoview.ol_viewer.formats', '')
+        view_formats = toolkit.config.get('ckanext.geoview.ol_viewer.formats', '')
         if view_formats:
             view_formats = view_formats.split(' ')
         else:
@@ -202,11 +204,11 @@ class OLGeoView(GeoViewBase):
             proxy_url = data_dict['resource']['url']
             proxy_service_url = data_dict['resource']['url']
 
-        gapi_key = config.get('ckanext.geoview.gapi_key')
-        if not p.toolkit.check_ckan_version(min_version='2.3'):
-            p.toolkit.c.resource['proxy_url'] = proxy_url
-            p.toolkit.c.resource['proxy_service_url'] = proxy_service_url
-            p.toolkit.c.resource['gapi_key'] = gapi_key
+        gapi_key = toolkit.config.get('ckanext.geoview.gapi_key')
+        if not toolkit.check_ckan_version(min_version='2.3'):
+            toolkit.c.resource['proxy_url'] = proxy_url
+            toolkit.c.resource['proxy_service_url'] = proxy_service_url
+            toolkit.c.resource['gapi_key'] = gapi_key
 
         return {'resource_view_json': 'resource_view' in data_dict and json.dumps(data_dict['resource_view']),
                 'proxy_service_url': proxy_service_url,
@@ -232,7 +234,7 @@ class GeoJSONView(GeoViewBase):
                 'title': 'GeoJSON',
                 'icon': 'map-marker',
                 'iframed': True,
-                'default_title': p.toolkit._('GeoJSON'),
+                'default_title': toolkit._('GeoJSON'),
                 }
 
     def can_view(self, data_dict):
@@ -259,7 +261,7 @@ class GeoJSONView(GeoViewBase):
                                    data_dict['resource'].get('on_same_domain'))
         quality = 2
 
-        if p.toolkit.check_ckan_version('2.1'):
+        if toolkit.check_ckan_version('2.1'):
             if correct_format:
                 if can_preview_from_domain:
                     return {'can_preview': True, 'quality': quality}
@@ -307,7 +309,7 @@ class WMTSView(GeoViewBase):
                 'title': 'wmts',
                 'icon': 'map-marker',
                 'iframed': True,
-                'default_title': p.toolkit._('WMTS'),
+                'default_title': toolkit._('WMTS'),
                 }
 
     def can_view(self, data_dict):
@@ -331,7 +333,7 @@ class WMTSView(GeoViewBase):
                                    data_dict['resource'].get('on_same_domain'))
         quality = 2
 
-        if p.toolkit.check_ckan_version('2.1'):
+        if toolkit.check_ckan_version('2.1'):
             if correct_format:
                 if can_preview_from_domain:
                     return {'can_preview': True, 'quality': quality}
