@@ -226,7 +226,7 @@ class GeoJSONView(GeoViewBase):
 
         super(GeoJSONView, self).update_config(config)
 
-        mimetypes.add_type('application/json', '.geojson')
+        mimetypes.add_type('application/geo+json', '.geojson')
 
     # IResourceView (CKAN >=2.3)
     def info(self):
