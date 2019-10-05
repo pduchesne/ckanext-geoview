@@ -97,19 +97,48 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         // this is currently used only for geojson parsing
         FEATURE_GEOM_PROP : '_HILATS_Geometry',
         DEFAULT_STYLEMAP : {
-            highlight : new ol.style.Style({
-                stroke: new ol.style.Stroke({
-                    color: 'blue',
-                    width: 3
-                }),
-                image: new ol.style.Circle({
-                    radius: 5,
+            default : [
+                new ol.style.Style({
                     stroke: new ol.style.Stroke({
-                        color: 'blue',
-                        width: 3
+                        color: 'white',
+                        width: 4
+                    })}),
+                new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: '#3399CC',
+                        width: 2.5
+                    }),
+                    image: new ol.style.Circle({
+                        radius: 5,
+                        stroke: new ol.style.Stroke({
+                            color: '#3399CC',
+                            width:1.5
+                        }),
+                        fill: new ol.style.Fill({
+                            color: 'rgba(255,255,255,0.4)'
+                        })
                     })
-                })
-            }),
+                })],
+
+            highlight : [
+                new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: 'white',
+                        width: 4
+                    })}),
+                new ol.style.Style({
+                    stroke: new ol.style.Stroke({
+                        color: '#2288FF',
+                        width: 2.5
+                    }),
+                    image: new ol.style.Circle({
+                        radius: 5,
+                        stroke: new ol.style.Stroke({
+                            color: 'blue',
+                            width: 3
+                        })
+                    })
+                })],
             selected : [
                 new ol.style.Style({
                     stroke: new ol.style.Stroke({
@@ -1066,6 +1095,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         source.set('waitingOnFirstData', true)
 
         var kml = new ol.layer.Vector({
+            style: OL_HELPERS.DEFAULT_STYLEMAP.default,
             title: 'KML', // TODO extract title from KML
             source: source
         });
@@ -1077,7 +1107,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     OL_HELPERS.createGFTLayer = function (tableId, GoogleAPIKey) {
         return new OpenLayers.Layer.Vector(
             "GFT", {
-                styleMap: OL_HELPERS.DEFAULT_STYLEMAP,
+                style: OL_HELPERS.DEFAULT_STYLEMAP.default,
                 projection: EPSG4326,
                 strategies: [new OpenLayers.Strategy.Fixed()],
                 protocol: new OpenLayers.Protocol.Script({
@@ -1126,7 +1156,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
     OL_HELPERS.createGMLLayer = function (url) {
 
         var gml = new OpenLayers.Layer.Vector("GML", {
-            styleMap: OL_HELPERS.DEFAULT_STYLEMAP,
+            style: OL_HELPERS.DEFAULT_STYLEMAP.default,
             strategies: [new OpenLayers.Strategy.Fixed()],
             protocol: new OpenLayers.Protocol.HTTP({
                 url: url,
@@ -1533,6 +1563,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                                                 }
 
                                                 ftLayer = new ol.layer.Vector({
+                                                    style: OL_HELPERS.DEFAULT_STYLEMAP.default,
                                                     title: candidate.title,
                                                     source: ftSource,
                                                     visible: idx == 0 || ftNames != undefined, // if explicit ft list was passed, enable all
@@ -1765,6 +1796,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                             }
 
                             var ftLayer = new ol.layer.Vector({
+                                style: OL_HELPERS.DEFAULT_STYLEMAP.default,
                                 title: candidate.title,
                                 source: ftSource,
                                 visible: idx == 0 || ftNames != undefined
@@ -2071,6 +2103,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             }
 
         var geojson = new ol.layer.Vector({
+            style: OL_HELPERS.DEFAULT_STYLEMAP.default,
             title: 'GeoJSON',
             source: new ol.source.Vector({
                 loader: function(extent, resolution, projection) {
@@ -2102,7 +2135,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         var esrijson = new OpenLayers.Layer.Vector(
             "Esri GeoJSON",
             {
-                styleMap: OL_HELPERS.DEFAULT_STYLEMAP,
+                style: OL_HELPERS.DEFAULT_STYLEMAP.default,
                 projection: EPSG4326,
                 strategies: [new OpenLayers.Strategy.Fixed()],
                 style: default_style,
@@ -2197,7 +2230,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         return deferredResult
     }
 
-    OL_HELPERS.withArcGisLayers = function (url, layerProcessor, layerNames, layerBaseUrl, map) {
+    OL_HELPERS.withArcGisLayers = function (url, layerProcessor, layerNames, proxifyFn, map) {
 
         var deferredResult = $.Deferred()
 
@@ -2212,14 +2245,17 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
         //TODO filter on layerNames
 
+        proxifyFn = proxifyFn || function(url) {return url;}
+
         parseArcGisDescriptor(
-            url,
+            proxifyFn(url),
             function (descriptor) {
 
                 if (descriptor.type == "Feature Layer") {
                     var deferredLayer = $.Deferred();
                     deferredLayers.push(deferredLayer);
-                    var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/query", descriptor, true, map)
+                    var queryUrl = proxifyFn(url + "/query");
+                    var newLayer = OL_HELPERS.createArcgisFeatureLayer(queryUrl, descriptor, true, map)
                     layerProcessor && layerProcessor(newLayer);
 
                     deferredLayer.resolve(newLayer);
@@ -2229,10 +2265,16 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
                     var isFirst = true
                     $_.each(descriptor.layers, function (layer, idx) {
                         if (!layer.subLayerIds) {
+                            // if layer has no extent defined, copy it from global descriptor
+                            if (!layer.bounds && !layer.extent) {
+                                layer.extent = descriptor.initialExtent || descriptor.fullExtent;
+                            }
+
                             var deferredLayer = $.Deferred();
                             deferredLayers.push(deferredLayer);
-                            var newLayer = OL_HELPERS.createArcgisFeatureLayer((layerBaseUrl || url) + "/" + layer.id + "/query", layer, isFirst, map)
-                            layerProcessor && layerProcessor(newLayer)
+                            var queryUrl = proxifyFn(url + "/" + layer.id + "/query");
+                            var newLayer = OL_HELPERS.createArcgisFeatureLayer(queryUrl, layer, isFirst, map);
+                            layerProcessor && layerProcessor(newLayer);
                             isFirst = false;
                             deferredLayer.resolve(newLayer);
                         }
@@ -2254,6 +2296,21 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         return deferredResult
     }
 
+    OL_HELPERS.parseArcgisExtent = function(extentObj, targetSrs) {
+
+        targetSrs = targetSrs || 'EPSG:4326';
+
+        var ext = [
+            extentObj.xmin,
+            extentObj.ymin,
+            extentObj.xmax,
+            extentObj.ymax
+        ];
+        // take advertised srs; 4326 if none
+        var srs = 'EPSG:'+ (extentObj.spatialReference ? extentObj.spatialReference.wkid : 4326);
+
+        return ol.proj.transformExtent(ext, ol.proj.get(srs), ol.proj.get(targetSrs));
+    }
 
     OL_HELPERS.createArcgisFeatureLayer = function (url, descriptor, visible, map) {
 
@@ -2276,6 +2333,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         }
 
         var layer = new ol.layer.Vector({
+            style: OL_HELPERS.DEFAULT_STYLEMAP.default,
             title: descriptor.name,
             source: new ol.source.Vector({
                 loader: function (extent, resolution, mapProjection) {
@@ -2393,15 +2451,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
 
         if (!descriptor.bounds && descriptor.extent) {
-            var ext = [
-                descriptor.extent.xmin,
-                descriptor.extent.ymin,
-                descriptor.extent.xmax,
-                descriptor.extent.ymax
-            ];
-            // take advertised srs; 4326 if none
-            var srs = 'EPSG:'+ (descriptor.extent.spatialReference ? descriptor.extent.spatialReference.wkid : 4326);
-            descriptor.bounds = ol.proj.transformExtent(ext, ol.proj.get(srs), ol.proj.get('EPSG:4326'));
+            descriptor.bounds = OL_HELPERS.parseArcgisExtent (descriptor.extent);
         }
 
         layer.getSource().set('name', descriptor.name);
@@ -2525,6 +2575,7 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
             }
 
         var geopackageLayer = new ol.layer.Vector({
+            style: OL_HELPERS.DEFAULT_STYLEMAP.default,
             title: gpFeatureTableInfo.tableName,
             visible: visible,
             source: new ol.source.Vector({
@@ -2815,11 +2866,11 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
         } else if (matchExtension("wfs")) {
             return OL_HELPERS.withFeatureTypesLayers(proxyUri, layerAdder, resourceNames /*FTname*/, map, true /* useGET */);
         } else if (matchExtension("arcgis_rest")) {
-            return OL_HELPERS.withArcGisLayers(proxyUri, layerAdder, resourceNames /*layername*/, undefined, map);
+            return OL_HELPERS.withArcGisLayers(url, layerAdder, resourceNames /*layername*/, proxifyFn , map);
         } else if (matchExtension("wfs3")) {
             return OL_HELPERS.withWFS3Types(proxyUri, layerAdder, resourceNames /*FTname*/, map, proxifyFn);
         } else if (matchExtension("gpkg")) {
-            return OL_HELPERS.withGeoPackageLayers(proxyUri, layerAdder, resourceNames /*FTname*/, map, proxifyFn);
+            return OL_HELPERS.withGeoPackageLayers(proxyUri, layerAdder, resourceNames /*FTname*/, map);
         }
 
         return deferredResult;

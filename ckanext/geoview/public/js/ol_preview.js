@@ -102,7 +102,7 @@
 
                 var format = preload_resource.format && preload_resource.format.toLocaleLowerCase();
                 if (format == "esri rest")
-                    format = "acrgis_rest"
+                    format = "arcgis_rest"
                 var mimeType = OL_HELPERS.SUPPORTED_MIME_TYPES[format];
 
                 if (this.options.resourceView)
@@ -174,7 +174,20 @@
                             if (isImageUrl)
                                 return url;
                             else {
-                                if (validUrlPath != url.split(/[?#]/, 2)[0])
+                                /* Arcgis proxying would require proxy to be able to forward subpath queries
+                                   let's drop proxy usage as of now, and rely on cross-origin acceptance */
+                                if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"]) {
+                                    // if resource URL is not HTTPS, remove protocol and hope that
+                                    // distant resource has a protocol matching CKAN
+                                    // this would be solved by using the proxy, cf remark above
+                                    if (url.startsWith('http://') )
+                                        return url.substring(url.indexOf('//'));
+                                    else
+                                        return url;
+                                }
+
+                                var urlPath = url.split(/[?#]/, 2)[0];
+                                if (urlPath != validUrlPath /* urlPath.startsWith(validUrlPath) */ )
                                     throw "Cannot proxy URL - not original resource URL : " + url;
 
                                 if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wms"] ||
