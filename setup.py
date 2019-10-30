@@ -28,5 +28,7 @@ setup(
     geojson_preview=ckanext.geoview.plugin:GeoJSONPreview
     wmts_view=ckanext.geoview.plugin:WMTSView
     wmts_preview=ckanext.geoview.plugin:WMTSPreview
+    shp_view=ckanext.geoview.plugin:SHPView
+    shp_preview=ckanext.geoview.plugin:SHPPreview
     ''',
 )

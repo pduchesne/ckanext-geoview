@@ -52,6 +52,15 @@
     background-position: -162px -62px;
 }
 
+.label[data-format=shp] {
+    background-color: #0080ff;
+}
+.format-label[data-format=shp],
+.format-label[data-format*=shp] {
+    background: url("../../img/gis-resources-sprite-icons.png") no-repeat 0 0;
+    background-position: -194px -62px;
+}
+
 .label[data-format=arcgis_rest] {
     background-color: #5c3ee0;
 }
