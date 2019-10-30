@@ -255,6 +255,11 @@ On CKAN >= 2.3, if you want the views to be created by default on all GeoJSON fi
 
     ckan.views.default_views = ... geojson_view
 
+You can use the ``ckanext.geoview.geojson.max_file_size`` configuration option to define the maximum file size (in bytes) that will be rendered in the map widget. Default is 25 Mb.
+Note that this relies on the resource ``size`` field being set (ie it will only work with uploaded files, not linked externally).
+
+
+
 
 Leaflet WMTS Viewer
 ----------------------

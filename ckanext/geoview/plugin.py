@@ -25,6 +25,8 @@ log = getLogger(__name__)
 GEOVIEW_FORMATS = ['kml', 'geojson', 'gml', 'wms', 'wfs', 'esrigeojson',
                    'gft', 'arcgis_rest', 'wmts', 'esri rest']
 
+GEOJSON_MAX_FILE_SIZE = 25 * 1024 * 1024
+
 
 def get_proxified_service_url(data_dict):
     '''
@@ -70,6 +72,11 @@ def get_openlayers_viewer_config():
     namespace = 'ckanext.geoview.ol_viewer.'
     return dict([(k.replace(namespace, ''), v) for k, v in toolkit.config.iteritems()
                  if k.startswith(namespace)])
+
+
+def get_max_file_size():
+    return toolkit.config.get(
+        'ckanext.geoview.geojson.max_file_size', GEOJSON_MAX_FILE_SIZE)
 
 
 class GeoViewBase(p.SingletonPlugin):
@@ -291,6 +298,7 @@ class GeoJSONView(GeoViewBase):
     def get_helpers(self):
         return {
             'get_common_map_config_geojson': get_common_map_config,
+            'geojson_get_max_file_size': get_max_file_size,
         }
 
 

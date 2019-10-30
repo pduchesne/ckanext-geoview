@@ -10,13 +10,24 @@ ckan.module('geojsonpreview', function (jQuery, _) {
         weight: 2
       },
       i18n: {
-        'error': _('An error occurred: %(text)s %(error)s')
+        'error': _('An error occurred: %(text)s %(error)s'),
+        'file_too_big': _('This GeoJSON file is too big to be previewed. Please download it locally.')
       }
     },
     initialize: function () {
       var self = this;
 
       self.el.empty();
+
+      if (this.options.max_file_size !== 'None' && preload_resource.size &&
+        preload_resource.size > this.options.max_file_size) {
+        var msg = this.i18n('file_too_big');
+        self.el.append($("<div class='data-viewer-error'><p class='text-danger'>" + msg + "</p></div>"));
+        return
+      }
+
+
+
       self.el.append($("<div></div>").attr("id","map"));
       self.map = ckan.commonLeafletMap('map', this.options.map_config);
 
