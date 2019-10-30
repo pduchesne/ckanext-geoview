@@ -53,6 +53,7 @@ def get_common_map_config():
     return dict([(k.replace(namespace, ''), v) for k, v in toolkit.config.iteritems()
                  if k.startswith(namespace)])
 
+
 def load_basemaps(basemapsFile):
 
     try:
@@ -63,6 +64,7 @@ def load_basemaps(basemapsFile):
         raise Exception(msg)
 
     return basemapsConfig
+
 
 def get_openlayers_viewer_config():
     '''
@@ -231,7 +233,7 @@ class OLGeoView(GeoViewBase):
                 'proxy_service_url': proxy_service_url,
                 'proxy_url': proxy_url,
                 'gapi_key': gapi_key,
-                'basemapsConfig' : self.basemapsConfig}
+                'basemapsConfig': self.basemapsConfig}
 
 
 class GeoJSONView(GeoViewBase):
@@ -376,11 +378,11 @@ class WMTSView(GeoViewBase):
             data_dict['resource']['url'] = \
                 proxy.get_proxified_resource_url(data_dict)
 
-    ## ITemplateHelpers
+    # ITemplateHelpers
 
     def get_helpers(self):
         return {
-            'get_common_map_config_wmts' : get_common_map_config,
+            'get_common_map_config_wmts': get_common_map_config,
         }
 
 
