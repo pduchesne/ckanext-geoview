@@ -2,7 +2,8 @@
 
 {% block page %}
     {%- block styles %}
-      {% resource g.main_css[6:] %}
+        {% set type = 'asset' if h.ckan_version() > '2.9' else 'resource' %}
+        {% include 'geoview/snippets/openlayers_' ~ type ~ '.html' %}
     {% endblock %}
 
     {% set map_config = h.get_common_map_config_shp() %}
@@ -19,7 +20,5 @@
         var preload_resource = {{ h.literal(h.dump_json(resource or c.resource)) }};
       </script>
     {% endblock %}
-
-  {% resource 'ckanext-geoview/shp' %}
 
 {% endblock %}
