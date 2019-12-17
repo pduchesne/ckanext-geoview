@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
+from future import standard_library
+standard_library.install_aliases()
 import os
 import logging
 import mimetypes
-import urlparse
+import urllib.parse
 
 
 import ckantoolkit as toolkit
@@ -127,7 +129,7 @@ class OLGeoView(GeoViewMixin, GeoViewBase):
 
     def _guess_format_from_extension(self, url):
         try:
-            parsed_url = urlparse.urlparse(url)
+            parsed_url = urllib.parse.urlparse(url)
             format_lower = (
                 os.path.splitext(parsed_url.path)[1][1:]
                 .encode("ascii", "ignore")

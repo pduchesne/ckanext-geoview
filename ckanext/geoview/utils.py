@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
+from future import standard_library
+standard_library.install_aliases()
 import json
 import logging
-import urlparse
+import urllib.parse
 
 import requests
 
-from urllib import urlencode
+from urllib.parse import urlencode
 
 import ckan.lib.base as base
 import ckan.lib.helpers as h
@@ -55,14 +57,14 @@ def proxy_service_resource(request, context, data_dict):
 
 def proxy_service_url(req, url):
 
-    parts = urlparse.urlsplit(url)
+    parts = urllib.parse.urlsplit(url)
     if not parts.scheme or not parts.netloc:
         base.abort(409, detail="Invalid URL.")
 
     try:
         method = req.environ["REQUEST_METHOD"]
 
-        params = urlparse.parse_qs(parts.query)
+        params = urllib.parse.parse_qs(parts.query)
 
         if not p.toolkit.asbool(
             base.config.get(
@@ -126,20 +128,20 @@ def proxy_service_url(req, url):
                     ).format(allowed=MAX_FILE_SIZE, actual=length),
                 )
 
-    except requests.exceptions.HTTPError, error:
+    except requests.exceptions.HTTPError as error:
         details = "Could not proxy resource. Server responded with %s %s" % (
             error.response.status_code,
             error.response.reason,
         )
         base.abort(409, detail=details)
-    except requests.exceptions.ConnectionError, error:
+    except requests.exceptions.ConnectionError as error:
         details = (
             """Could not proxy resource because a
                             connection error occurred. %s"""
             % error
         )
         base.abort(502, detail=details)
-    except requests.exceptions.Timeout, error:
+    except requests.exceptions.Timeout as error:
         details = "Could not proxy resource because the connection timed out."
         base.abort(504, detail=details)
     return response
@@ -153,7 +155,7 @@ def get_common_map_config():
     return dict(
         [
             (k.replace(namespace, ""), v)
-            for k, v in toolkit.config.iteritems()
+            for k, v in toolkit.config.items()
             if k.startswith(namespace)
         ]
     )
@@ -168,7 +170,7 @@ def get_shapefile_viewer_config():
     return dict(
         [
             (k.replace(namespace, ""), v)
-            for k, v in toolkit.config.iteritems()
+            for k, v in toolkit.config.items()
             if k.startswith(namespace)
         ]
     )
@@ -189,7 +191,7 @@ def get_openlayers_viewer_config():
     return dict(
         [
             (k.replace(namespace, ""), v)
-            for k, v in toolkit.config.iteritems()
+            for k, v in toolkit.config.items()
             if k.startswith(namespace)
         ]
     )
