@@ -1,14 +1,10 @@
 # -*- coding: utf-8 -*-
 
-from future import standard_library
-standard_library.install_aliases()
 import json
 import logging
-import urllib.parse
+from six.moves.urllib.parse import urlencode, urlsplit, parse_qs
 
 import requests
-
-from urllib.parse import urlencode
 
 import ckan.lib.base as base
 import ckan.lib.helpers as h
@@ -57,14 +53,14 @@ def proxy_service_resource(request, context, data_dict):
 
 def proxy_service_url(req, url):
 
-    parts = urllib.parse.urlsplit(url)
+    parts = urlsplit(url)
     if not parts.scheme or not parts.netloc:
         base.abort(409, detail="Invalid URL.")
 
     try:
         method = req.environ["REQUEST_METHOD"]
 
-        params = urllib.parse.parse_qs(parts.query)
+        params = parse_qs(parts.query)
 
         if not p.toolkit.asbool(
             base.config.get(
