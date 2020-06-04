@@ -335,6 +335,12 @@ ol.proj.addProjection(createEPSG4326Proj('EPSG:4326:LONLAT', 'enu'));
 
     var getArcGISVectorExtent = function() {
         var bbox = this.get('arcgisDescr') && this.get('arcgisDescr').bounds;
+        if (!bbox) {
+            bbox_obj = this.get('arcgisDescr').extent;
+            if (bbox_obj) {
+                bbox = [bbox_obj['xmin'], bbox_obj['ymin'], bbox_obj['xmax'], bbox_obj['ymax']];            
+            }
+        }
         return bbox;
     }
 
