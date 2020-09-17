@@ -213,12 +213,9 @@ def get_proxified_service_url(data_dict):
     :param data_dict: contains a resource and package dict
     :type data_dict: dictionary
     """
-    controller = (
-        "ckanext.geoview.controllers.service_proxy:ServiceProxyController"
-    )
     url = h.url_for(
         action="proxy_service",
-        controller=controller,
+        controller='service_proxy',
         id=data_dict["package"]["name"],
         resource_id=data_dict["resource"]["id"],
     )
