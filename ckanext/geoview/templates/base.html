@@ -2,5 +2,6 @@
 
 {% block styles %}
     {{ super() }}
-    {% resource 'ckanext-geoview/css/geo-resource-styles.css' %}
+    {% set type = 'asset' if h.ckan_version().split('.')[1] | int >= 9 else 'resource' %}
+    {% include 'geoview/snippets/geo-resource-styles_' ~ type ~ '.html' %}
 {% endblock %}

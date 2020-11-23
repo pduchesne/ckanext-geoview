@@ -1,0 +1,6 @@
+{% set main_css = h.get_rtl_css() if h.is_rtl_language() else g.main_css %}
+{# strip '/base/' prefix and '.css' suffix #}
+{% asset main_css[6:-4] %}
+
+{% asset 'ckanext-geoview/shp_js' %}
+{% asset 'ckanext-geoview/shp_css' %}
