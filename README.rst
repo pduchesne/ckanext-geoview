@@ -10,7 +10,7 @@ used to be part of ckanext-spatial_.
 **Note:** This is a work in progress, if you can help with `OpenLayers`_ or `Leaflet`_ development,
 check the `Issues` section for what needs to be done or add a new issue.
 
-
+This extensions supports CKAN 2.6 onwards, including Python 3 support on CKAN 2.9 or higher.
 
 ------------
 Installation
