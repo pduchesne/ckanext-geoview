@@ -10,7 +10,7 @@ from urllib import urlencode
 
 log = getLogger(__name__)
 
-MAX_FILE_SIZE = 3 * 1024 * 1024  # 1MB
+MAX_FILE_SIZE = 4 * 1024 * 1024  # 1MB
 CHUNK_SIZE = 512
 
 # HTTP request parameters that may conflict with OGC services protocols and should be excluded from proxied calls
