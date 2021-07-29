@@ -286,8 +286,9 @@ class SHPView(GeoViewBase):
     def can_view(self, data_dict):
         resource = data_dict["resource"]
         format_lower = resource["format"].lower()
+        name_lower = resource.get("name", "").lower()
 
-        if format_lower in self.SHP:
+        if format_lower in self.SHP or any([shp in name_lower for shp in self.SHP]):
             return self.same_domain or self.proxy_enabled
         return False
 
