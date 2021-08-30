@@ -14,72 +14,6 @@
 
         ckan.geoview = ckan.geoview || {}
 
-        var esrirestExtractor = function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-            var parsedUrl = resource.url.split('#');
-            var url = proxyServiceUrl || parsedUrl[0];
-
-            var layerName = parsedUrl.length > 1 && parsedUrl[1];
-
-            OL_HELPERS.withArcGisLayers(url, layerProcessor, layerName, parsedUrl[0]);
-        }
-
-        ckan.geoview.layerExtractors = {
-
-            'kml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var url = proxyUrl || resource.url;
-                layerProcessor(OL_HELPERS.createKMLLayer(url));
-            },
-            'gml': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var url = proxyUrl || resource.url;
-                layerProcessor(OL_HELPERS.createGMLLayer(url));
-            },
-            'geojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var url = proxyUrl || resource.url;
-                layerProcessor(OL_HELPERS.createGeoJSONLayer(url));
-            },
-            'wfs': function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var parsedUrl = resource.url.split('#');
-                var url = proxyServiceUrl || parsedUrl[0];
-
-                var ftName = parsedUrl.length > 1 && parsedUrl[1];
-                OL_HELPERS.withFeatureTypesLayers(url, layerProcessor, ftName, map, true /* useGET */);
-            },
-            'wms' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var parsedUrl = resource.url.split('#');
-                // use the original URL for the getMap, as there's no need for a proxy for image requests
-                var getMapUrl = parsedUrl[0];
-
-                var url = proxyServiceUrl || getMapUrl;
-
-                var layerName = parsedUrl.length > 1 && parsedUrl[1];
-                OL_HELPERS.withWMSLayers(url, getMapUrl, layerProcessor, layerName, true /* useTiling*/, map );
-            },
-            'wmts' : function(resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var parsedUrl = resource.url.split('#');
-
-                var url = proxyServiceUrl || parsedUrl[0];
-
-                var layerName = parsedUrl.length > 1 && parsedUrl[1];
-                OL_HELPERS.withWMTSLayers(url, layerProcessor, layerName);
-            },
-            'esrigeojson': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var url = proxyUrl || resource.url;
-                layerProcessor(OL_HELPERS.createEsriGeoJSONLayer(url));
-            },
-            'arcgis_rest': esrirestExtractor ,
-            'esri rest': esrirestExtractor ,
-            'gft': function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-                var tableId = OL_HELPERS.parseURL(resource.url).query.docid;
-                layerProcessor(OL_HELPERS.createGFTLayer(tableId, ckan.geoview.gapi_key));
-            }
-        }
-
-        var withLayers = function (resource, proxyUrl, proxyServiceUrl, layerProcessor, map) {
-
-            var withLayers = ckan.geoview.layerExtractors[resource.format && resource.format.toLocaleLowerCase()];
-            withLayers && withLayers(resource, proxyUrl, proxyServiceUrl, layerProcessor, map);
-        }
-
         return {
             options: {
                 i18n: {
@@ -97,6 +31,8 @@
                     var styleMapJson = JSON.parse(ckan.geoview.feature_style)
                     /* TODO_OL4 how is stylemap converted to OL4 ? */
                     //resourceLayer.styleMap = new OpenLayers.StyleMap(styleMapJson)
+
+                    /* TODO set it as global feature style */
                 }
 
                 if (this.options.ol_config.hide_overlays &&
@@ -104,10 +40,10 @@
                     resourceLayer.setVisibility(false);
                 }
 
-                this.map.addLayerWithExtent(resourceLayer)
+                return this.map.addLayerWithExtent(resourceLayer)
             },
 
-            _commonBaseLayer: function(mapConfig, callback, module) {
+            _commonBaseLayer: function(mapConfig) {
 
                 if (mapConfig.type == 'mapbox') {
                     // MapBox base map
@@ -116,15 +52,14 @@
                             'See http://www.mapbox.com/developers/api-overview/ for details';
                     }
 
-                    mapConfig.url = ['//a.tiles.mapbox.com/v4/' + mapConfig['map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['access_token'],
-                                '//b.tiles.mapbox.com/v4/' + mapConfig['map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['access_token'],
-                                '//c.tiles.mapbox.com/v4/' + mapConfig['map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['access_token'],
-                                '//d.tiles.mapbox.com/v4/' + mapConfig['map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['access_token'],
-                    ];
+                    mapConfig.url = '//api.mapbox.com/v4/' + mapConfig['map_id'] + '/${z}/${x}/${y}.png?access_token=' + mapConfig['access_token'];
+                    mapConfig.type = 'XYZ';
                     mapConfig.attribution = '<a href="https://www.mapbox.com/about/maps/" target="_blank">&copy; Mapbox &copy; OpenStreetMap </a> <a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a>';
 
                 } else if (mapConfig.type == 'custom') {
                     mapConfig.type = 'XYZ'
+                } else if (mapConfig.type == 'wmts') {
+                    mapConfig.url = '/basemap_service/'+encodeURIComponent(mapConfig.title);
                 } else if (!mapConfig.type || mapConfig.type.toLowerCase() == 'osm') {
                     // default to Stamen base map
                     mapConfig.type = 'Stamen';
@@ -133,149 +68,14 @@
                     mapConfig.attribution = mapConfig.attribution || 'Map tiles by <a href="http://stamen.com">Stamen Design</a> (<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>). Data by <a href="http://openstreetmap.org">OpenStreetMap</a> (<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>)';
                 }
 
-                return OL_HELPERS.createLayerFromConfig(mapConfig, true, callback);
+                return OL_HELPERS.createLayerFromConfig(mapConfig, true);
             },
 
             _onReady: function () {
 
-                var baseMapsConfig = this.options.basemapsConfig
-
-                // gather options and config for this view
-                var proxyUrl = this.options.proxy_url;
-                var proxyServiceUrl = this.options.proxy_service_url;
-
-                if (this.options.resourceView)
-                    $_.extend(ckan.geoview, JSON.parse(this.options.resourceView));
-
-                ckan.geoview.gapi_key = this.options.gapi_key;
-
-                var mapDiv = $("<div></div>").attr("id", "map").addClass("map")
-                var info = $("<div></div>").attr("id", "info")
-                mapDiv.append(info)
-
-                $("#map-container").empty()
-                $("#map-container").append(mapDiv)
-
-                info.tooltip({
-                    animation: false,
-                    trigger: 'manual',
-                    placement: "right",
-                    html: true
-                });
-
-                var overlays = []
-                if ((ckan.geoview && 'feature_hoveron' in ckan.geoview) ? ckan.geoview['feature_hoveron'] : this.options.ol_config.default_feature_hoveron)
-                    overlays.push(new OL_HELPERS.FeatureInfoOverlay({
-                        element: $("<div class='popupContainer'><div class='popupContent'></div></div>")[0],
-                        autoPan: false,
-                        offset: [5,5]
-                    }))
-
-
-                var createMapFun = function(baseMapLayer) {
-
-                    var layerSwitcher = new ol.control.HilatsLayerSwitcher();
-
-                    var coordinateFormatter = function(coordinate) {
-                        var degrees = map && map.getView() && map.getView().getProjection() && (map.getView().getProjection().getUnits() == 'degrees')
-                        return ol.coordinate.toStringXY(coordinate, degrees ? 5:2);
-                    };
-
-                    var options = {
-                        target: $('.map')[0],
-                        layers: [baseMapLayer],
-                        controls: [
-                            new ol.control.ZoomSlider(),
-                            new ol.control.MousePosition( {
-                                coordinateFormat: coordinateFormatter,
-                            }),
-                            layerSwitcher
-                        ],
-                        loadingDiv: false,
-                        loadingListener: function(isLoading) {
-                            layerSwitcher.isLoading(isLoading)
-                        },
-                        overlays: overlays,
-                        view: new ol.View({
-                            // projection attr should be set when creating a baselayer
-                            projection: baseMapLayer.getSource().getProjection() || OL_HELPERS.Mercator,
-                            extent: baseMapLayer.getExtent(), /* TODO_OL4 is this equivalent to maxExtent? */
-                            //center: [0,0],
-                            //zoom: 4
-                        })
-                    }
-
-                    var map = this.map = new OL_HELPERS.LoggingMap(options);
-                    // by default stretch the map to the basemap extent or to the world
-                    map.getView().fit(
-                            baseMapLayer.getExtent() || ol.proj.transformExtent(OL_HELPERS.WORLD_BBOX, OL_HELPERS.EPSG4326, map.getView().getProjection()),
-                        {constrainResolution: false}
-                    );
-
-                    var highlighter = new ol.interaction.Select({
-                        toggleCondition : function(evt) {return false},
-                        multi: true,
-                        condition: ol.events.condition.pointerMove
-                    });
-                    map.addInteraction(highlighter);
-
-                    // force a reload of all vector sources on projection change
-                    map.getView().on('change:projection', function() {
-                        map.getLayers().forEach(function(layer) {
-                            if (layer instanceof ol.layer.Vector) {
-                                layer.getSource().clear();
-                            }
-                        });
-                    });
-                    map.on('change:view', function() {
-                        map.getLayers().forEach(function(layer) {
-                            if (layer instanceof ol.layer.Vector) {
-                                layer.getSource().clear();
-                            }
-                        });
-                    });
-
-
-                    var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
-
-                    var bbox = fragMap.bbox && fragMap.bbox.split(',').map(parseFloat)
-                    var bbox = bbox && ol.proj.transformExtent(bbox, OL_HELPERS.EPSG4326, this.map.getProjection());
-                    if (bbox) this.map.zoomToExtent(bbox);
-
-                    /* Update URL with current bbox
-                    var $map = this.map;
-                    var mapChangeListener = function() {
-                        var newBbox = $map.getExtent() && $map.getExtent().transform($map.getProjectionObject(), OL_HELPERS.EPSG4326).toString()
-
-                        if (newBbox) {
-                            var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
-                            fragMap['bbox'] = newBbox;
-
-                            (window.parent || window).location.hash = OL_HELPERS.kvp2string(fragMap)
-                        }
-                    }
-
-
-                    // listen to bbox changes to update URL fragment
-                    this.map.events.register("moveend", this.map, mapChangeListener);
-
-                    this.map.events.register("zoomend", this.map, mapChangeListener);
-
-                    */
-
-
-                    var proxyUrl = this.options.proxy_url;
-                    var proxyServiceUrl = this.options.proxy_service_url;
-
-                    ckan.geoview.googleApiKey = this.options.gapi_key;
-
-
-                    withLayers(preload_resource, proxyUrl, proxyServiceUrl, $_.bind(this.addLayer, this), this.map);
-                }
-
                 var $this = this;
 
-                // Choose base map based on CKAN wide config
+                var baseMapsConfig = this.options.basemapsConfig;
 
                 if (!baseMapsConfig) {
                     // deprecated - for backward comp, parse old config format into json config
@@ -286,32 +86,168 @@
                     for (var fieldName in this.options.map_config) {
                         if (fieldName.startsWith(prefix)) config[fieldName.substring(prefix.length)] = this.options.map_config[fieldName]
                     }
+
+                    // title is necessary to appear in basemap selector
+                    if (!config.title)
+                        config.title = "Basemap";
+
                     baseMapsConfig = [config]
                 }
 
-                this._commonBaseLayer(
-                    baseMapsConfig[0],
-                    function(layer) {
-                        baseMapsConfig[0].$ol_layer = layer
-                        $_.bind(createMapFun,$this)(layer)
+
+                // gather options and config for this view
+                var originalUrl = preload_resource.url;
+                var proxyUrl = this.options.proxy_url;
+                var proxyServiceUrl = this.options.proxy_service_url;
+                var service_resource_name = preload_resource.service_resource_name;
+
+                var format = preload_resource.format && preload_resource.format.toLocaleLowerCase();
+                if (format == "esri rest")
+                    format = "arcgis_rest"
+                var mimeType = OL_HELPERS.SUPPORTED_MIME_TYPES[format];
+
+                if (this.options.resourceView)
+                    $_.extend(ckan.geoview, JSON.parse(this.options.resourceView));
+
+                ckan.geoview.gapi_key = this.options.gapi_key;
+
+                var mapDiv = $("<div></div>").attr("id", "map").addClass("map")
+
+                $("#map-container").empty()
+                $("#map-container").append(mapDiv)
+
+                var useFeatureHoverOn = (ckan.geoview && 'feature_hoveron' in ckan.geoview) ?
+                                        ckan.geoview['feature_hoveron'] :
+                                        this.options.ol_config.default_feature_hoveron
+
+
+                var createMapFn = function(baseMapLayer) {
+                    var map = $this.map = OL_HELPERS.createMap({
+                        container: mapDiv[0],
+                        //styleMap : _this.featureStyleMap,
+                        featureInfoPopup: useFeatureHoverOn,
+                        featureDetailsControl: true,
+                        layerSwitcher : true,
+                        baseMapLayer: baseMapLayer
+                    });
+
+                    var fragMap;
+                    try {
+                        fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
+                    } catch (err) {
+                        fragMap = {};
+                        // maybe a cross-origin frame access - ignore
+                        console.warn(err);
+                    }
+
+                    var bbox = fragMap.bbox && fragMap.bbox.split(',').map(parseFloat)
+                    var bbox = bbox && ol.proj.transformExtent(bbox, OL_HELPERS.EPSG4326, map.getProjection());
+                    if (bbox)
+                        map.zoomToExtent(bbox);
+
+                    /* Update URL with current bbox
+                     var mapChangeListener = function() {
+                     var newBbox = map.getExtent() && map.getExtent().transform(map.getProjectionObject(), OL_HELPERS.EPSG4326).toString()
+
+                     if (newBbox) {
+                     var fragMap = OL_HELPERS.parseKVP((window.parent || window).location.hash && (window.parent || window).location.hash.substring(1));
+                     fragMap['bbox'] = newBbox;
+
+                     (window.parent || window).location.hash = OL_HELPERS.kvp2string(fragMap)
+                     }
+                     }
+
+
+                     // listen to bbox changes to update URL fragment
+                     map.events.register("moveend", map, mapChangeListener);
+
+                     map.events.register("zoomend", map, mapChangeListener);
+
+                     */
+
+                    var validUrlPath = originalUrl.split(/[?#]/, 2)[0];
+                    var deferredResult = OL_HELPERS.addLayersFromUrl(
+                        map,
+                        originalUrl,
+                        mimeType,
+                        service_resource_name !== undefined ? service_resource_name.split(',') : undefined,
+                        function (url, isImageUrl) {
+                            if (isImageUrl)
+                                return url;
+                            else {
+                                /* Arcgis proxying would require proxy to be able to forward subpath queries
+                                   let's drop proxy usage as of now, and rely on cross-origin acceptance */
+                                if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"]) {
+                                    // if resource URL is not HTTPS, remove protocol and hope that
+                                    // distant resource has a protocol matching CKAN
+                                    // this would be solved by using the proxy, cf remark above
+                                    if (url.startsWith('http://') )
+                                        return url.substring(url.indexOf('//'));
+                                    else
+                                        return url;
+                                }
+
+                                var urlPath = url.split(/[?#]/, 2)[0];
+                                if (urlPath != validUrlPath /* urlPath.startsWith(validUrlPath) */ )
+                                    throw "Cannot proxy URL - not original resource URL : " + url;
+
+                                if (mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wms"] ||
+                                    mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wfs"] ||
+                                    mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["wmts"] ||
+                                    mimeType == OL_HELPERS.SUPPORTED_MIME_TYPES["arcgis_rest"]) {
+                                    // reminder : the proxyService will remove OGC parameters from proxied URL
+                                    return proxyServiceUrl || url;
+                                } else
+                                    return proxyUrl || url;
+                            }
+                        },
+                        $_.bind($this.addLayer, $this)
+                    );
+
+                    deferredResult.fail(function (err) {
+                        console.warn(err);
+                        map.logError("Failed to add layer(s) : "+err);
+                    })
+                }
+
+                // Init map with first basemap from config
+                this._commonBaseLayer(baseMapsConfig[0]) // take first basemap def
+                    .then(function (layers) {
+
+                        if (layers.length > 1)
+                        // TODO unintended limitation
+                            throw "First basemap config must yield one single layer"
+
+                        baseMapsConfig[0].$ol_layer = layers[0]
+
+                        // once basemap is instantiated, create the Map with it
+                        createMapFn(layers[0])
 
                         // add all configured basemap layers
                         if (baseMapsConfig.length > 1) {
                             // add other basemaps if any
-                            for (var idx=1;idx<baseMapsConfig.length;idx++) {
-                                OL_HELPERS.createLayerFromConfig(
-                                    baseMapsConfig[idx],
-                                    true,
-                                    function(layer) {
-                                        layer.setVisible(false)
-                                        // insert all basemaps at the bottom
-                                        $this.map.getLayers().insertAt(0, layer)
-                                    });
+                            for (var idx = 1; idx < baseMapsConfig.length; idx++) {
+                                (function(idx) {
+                                    $this._commonBaseLayer(baseMapsConfig[idx])
+                                        .then(function (layers) {
+                                            layers.forEach(
+                                                function (layer) {
+                                                    layer.setVisible(false)
+                                                    // insert all basemaps at the bottom
+                                                    $this.map.getLayers().insertAt(0, layer)
+                                                });
+                                        }).fail(function(err) {
+                                            var msg = "Failed to add basemap["+idx+"] from "+baseMapsConfig[idx].url;
+                                            $this.map.logError(msg);
+                                            console.warn(msg);
+                                            console.warn(err);
+                                        });
+                                })(idx);
                             }
                         }
-                    },
-                    this);
-
+                    }).fail(function(err) {
+                        console.warn("Failed to init map : "+err);
+                    });
             }
         }
     });
