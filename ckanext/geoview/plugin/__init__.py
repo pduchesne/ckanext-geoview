@@ -38,9 +38,12 @@ class GeoViewBase(p.SingletonPlugin):
         basemapConfigFile = toolkit.config.get(
             "ckanext.geoview.basemaps", None
         )
-        self.basemapsConfig = basemapConfigFile and utils.load_basemaps(
-            basemapConfigFile
-        )
+        if basemapConfigFile:
+            self.basemapsConfig = utils.load_basemaps(basemapConfigFile)
+            basemap_map = dict( ( (lambda c: c['title'])(conf), conf) for conf in self.basemapsConfig)
+            config['ckanext.geoview.basemaps_map'] = basemap_map
+        else:
+            self.basemapsConfig = False
 
     def update_config(self, config):
         toolkit.add_public_directory(config, "../public")
@@ -84,7 +87,7 @@ class OLGeoView(GeoViewMixin, GeoViewBase):
             "name": "geo_view",
             "title": "Map viewer (OpenLayers)",
             "icon": "globe",
-            "iframed": True,
+            "iframed": False,
             "default_title": toolkit._("Map viewer"),
             "schema": {
                 "feature_hoveron": [ignore_empty, boolean_validator],
