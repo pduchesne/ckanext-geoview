@@ -7,9 +7,9 @@
     <div id="data-preview">
         <div id="map-container"
              data-module="olpreview"
-             data-module-gapi_key="{{ gapi_key or c.resource.gapi_key }}"
-             data-module-proxy_url="{{ proxy_url or c.resource.proxy_url }}"
-             data-module-proxy_service_url="{{ proxy_service_url or c.resource.proxy_service_url }}"
+             data-module-gapi_key="{{ gapi_key }}"
+             data-module-proxy_url="{{ proxy_url }}"
+             data-module-proxy_service_url="{{ proxy_service_url }}"
              data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
              data-module-map_config="{{ h.dump_json(map_config) }}"
              data-module-ol_config="{{ h.dump_json(ol_config) }}"
@@ -21,13 +21,9 @@
               <div class="left">{{ _('Loading...') }}</div>
             </h4>
         </div>
-        <div class="layerswitcher olControlLayerSwitcher"></div>
     </div>
 
-    {% resource 'ckanext-geoview/openlayers' %}
-    {% resource 'vendor/bootstrap' %}
-{% endblock %}
+    {% set type = 'asset' if h.ckan_version().split('.')[1] | int >= 9 else 'resource' %}
+    {% include 'geoview/snippets/openlayers_' ~ type ~ '.html' %}
 
-{% block styles %}
-    <link rel="stylesheet" href="{{ h.url_for_static('/css/bootstrap.min.css') }}" type="text/css" media="screen, projection" />
 {% endblock %}

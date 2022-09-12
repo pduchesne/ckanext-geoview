@@ -2,18 +2,19 @@
 
 {% block page %}
     {%- block styles %}
-      {% resource g.main_css[6:] %}
+        {% set type = 'asset' if h.ckan_version().split('.')[1] | int >= 9 else 'resource' %}
+        {% include 'geoview/snippets/geojson_' ~ type ~ '.html' %}
     {% endblock %}
-
     {% set map_config = h.get_common_map_config_geojson() %}
-    <div data-module="geojsonpreview" id="data-preview" data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}" data-module-map_config="{{ h.dump_json(map_config) }}">
+    <div data-module="geojsonpreview" id="data-preview"
+         data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}"
+         data-module-map_config="{{ h.dump_json(map_config) }}"
+         data-module-max_file_size="{{ h.geojson_get_max_file_size() }}"
+         >
         <h4 class="loading-dialog">
           <div class="loading-spinner"></div>
           <div class="left">{{ _('Loading...') }}</div>
         </h4>
     </div>
 
-  {% resource 'ckanext-geoview/geojson' %}
-
 {% endblock %}
-

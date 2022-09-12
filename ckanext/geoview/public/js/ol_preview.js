@@ -62,9 +62,10 @@
                     mapConfig.url = '/basemap_service/'+encodeURIComponent(mapConfig.title);
                 } else if (!mapConfig.type || mapConfig.type.toLowerCase() == 'osm') {
                     // default to Stamen base map
-                    mapConfig.type == 'OSM';
-                    mapConfig.url = "http://tile.openstreetmap.org/{z}/{x}/{y}.png";
-                    mapConfig.attribution = 'Map tiles & Data by OpenStreetMap, under CC BY SA.';
+                    mapConfig.type = 'Stamen';
+                    mapConfig.url = 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png';
+                    mapConfig.subdomains = mapConfig.subdomains || 'abcd';
+                    mapConfig.attribution = mapConfig.attribution || 'Map tiles by <a href="http://stamen.com">Stamen Design</a> (<a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a>). Data by <a href="http://openstreetmap.org">OpenStreetMap</a> (<a href="http://creativecommons.org/licenses/by-sa/3.0">CC BY SA</a>)';
                 }
 
                 return OL_HELPERS.createLayerFromConfig(mapConfig, true);

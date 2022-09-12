@@ -1,0 +1,24 @@
+{% extends "dataviewer/base.html" %}
+
+{% block page %}
+    {%- block styles %}
+        {% set type = 'asset' if h.ckan_version().split('.')[1] | int >= 9 else 'resource' %}
+        {% include 'geoview/snippets/shp_' ~ type ~ '.html' %}
+    {% endblock %}
+
+    {% set map_config = h.get_common_map_config_shp() %}
+    {% set shp_config = h.get_shapefile_viewer_config() %}
+    <div data-module="shppreview" id="data-preview" data-module-site_url="{{ h.dump_json(h.url('/', locale='default', qualified=true)) }}" data-module-map_config="{{ h.dump_json(map_config) }}" data-module-shp_config="{{ h.dump_json(shp_config) }}">
+        <h4 class="loading-dialog">
+          <div class="loading-spinner"></div>
+          <div class="left">{{ _('Loading...') }}</div>
+        </h4>
+    </div>
+
+    {% block scripts %}
+      <script>
+        var preload_resource = {{ h.literal(h.dump_json(resource or c.resource)) }};
+      </script>
+    {% endblock %}
+
+{% endblock %}

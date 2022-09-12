@@ -10,7 +10,7 @@ used to be part of ckanext-spatial_.
 **Note:** This is a work in progress, if you can help with `OpenLayers`_ or `Leaflet`_ development,
 check the `Issues` section for what needs to be done or add a new issue.
 
-
+This extensions supports CKAN 2.6 onwards, including Python 3 support on CKAN 2.9 or higher.
 
 ------------
 Installation
@@ -66,6 +66,7 @@ Available plugins
 * `OpenLayers Viewer`_
 * `Leaflet GeoJSON Viewer`_
 * `Leaflet WMTS Viewer`_
+* `Leaflet ESRI Shapefile Viewer`_
 
 
 OpenLayers Viewer
@@ -255,6 +256,11 @@ On CKAN >= 2.3, if you want the views to be created by default on all GeoJSON fi
 
     ckan.views.default_views = ... geojson_view
 
+You can use the ``ckanext.geoview.geojson.max_file_size`` configuration option to define the maximum file size (in bytes) that will be rendered in the map widget. Default is 25 Mb.
+Note that this relies on the resource ``size`` field being set (ie it will only work with uploaded files, not linked externally).
+
+
+
 
 Leaflet WMTS Viewer
 ----------------------
@@ -271,6 +277,31 @@ On CKAN >= 2.3, if you want the views to be created by default on all WMTS resou
 
 
     ckan.views.default_views = ... wmts_view
+
+
+Leaflet ESRI Shapefile Viewer
+-----------------------------
+
+.. image:: http://i.imgur.com/JDIRgPy.png
+
+The Leaflet_ Shapefile_ viewer will render ESRI Shapfiles (A ZIP archive contains the .shp, .shx, .dbf, and .prj files) on a map and add a popup showing the features properties, for those resources that have a ``shp`` format.
+
+To enable it, add ``shp_view`` to your ``ckan.plugins`` setting. (use ``shp_preview`` if you are using CKAN < 2.3)::
+
+    ckan.plugins = ... resource_proxy shp_view
+
+On CKAN >= 2.3, if you want the views to be created by default on all Shapefiles, add the plugin to the following setting::
+
+
+    ckan.views.default_views = ... shp_view
+
+The projection information (EPSG code, e.g., 4326 and 3857) will be loaded if there is a .prj file provided. You can also add a new field named 'resource_crs' in your custom resource fields or the following configuration option (The loading order is: .prj file, 'resource_crs' field, option and EPSG:4326/WGS84)::
+
+    ckanext.geoview.shp_viewer.srid = 4326
+
+The encoding of the shapefile can be defined by a custom resource field named 'encoding' in the metadata of the dataset or the following configuration option (The loading order is: 'encoding' field, option and UTF-8)::
+
+    ckanext.geoview.shp_viewer.encoding = UTF-8
 
 
 ----------------------------------
@@ -348,4 +379,5 @@ To publish a new version to PyPI follow these steps:
 .. _OpenLayers: http://openlayers.org
 .. _Leaflet: http://leafletjs.com/
 .. _GeoJSON: http://geojson.org/
+.. _Shapefile: https://en.wikipedia.org/wiki/Shapefile
 .. _ckanext-spatial: https://github.com/ckan/ckanext-spatial
